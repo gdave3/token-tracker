@@ -6,7 +6,7 @@ import Foundation
 
 // MARK: - Version & update config
 
-let kAppVersion = "1.0.6"
+let kAppVersion = "1.0.8"
 let kGitHubRepo = "gdave3/token-tracker"
 
 // MARK: - Auto Updater
@@ -449,6 +449,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         let w = NSWindow(contentRect: rect, styleMask: style, backing: .buffered, defer: false)
         w.title = "Token Tracker"
         w.isReleasedWhenClosed = false
+        // Show app icon in the title bar proxy icon button
+        w.representedURL = URL(string: "http://localhost:\(kPort)")
+        if let iconBtn = w.standardWindowButton(.documentIconButton) {
+            iconBtn.image = NSApp.applicationIconImage
+        }
 
         let wv = WKWebView(frame: rect)
         wv.navigationDelegate = self
