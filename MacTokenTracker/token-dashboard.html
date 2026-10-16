@@ -753,6 +753,7 @@ python tracker.py <span class="cmd-kw">prices</span></pre>
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v1.0.10';
+const fmtTs = ts => ts ? new Date(ts).toLocaleString(undefined, {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}) : '—';
 const GITHUB_REPO = 'gdave3/token-tracker';
 const MODELS = {
   "claude-opus-5-5":   { input: 4.00,  output: 20.00, label: "Claude Opus 5.5"   },
@@ -1149,7 +1150,7 @@ function renderLog(data) {
   const tbody = document.getElementById('logTableBody');
   tbody.innerHTML = '';
   [...data.entries].reverse().forEach(e => {
-    const ts    = (e.ts||'').replace('T',' ').replace('Z','').slice(0,16);
+    const ts    = fmtTs(e.ts);
     const label = (MODELS[e.model||'']||{}).label || e.model || '—';
     const tr    = document.createElement('tr');
     tr.innerHTML = `
@@ -1208,7 +1209,7 @@ function updateTilesIncremental(summary) {
       if (newCount > 0) {
         const newEntries = logData.entries.slice(-newCount).reverse();
         newEntries.forEach(e => {
-          const ts    = (e.ts||'').replace('T',' ').replace('Z','').slice(0,16);
+          const ts    = fmtTs(e.ts);
           const label = (MODELS[e.model||'']||{}).label || e.model || '—';
           const tr = document.createElement('tr');
           tr.style.animation = 'fadeIn .4s ease';
