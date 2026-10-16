@@ -485,6 +485,31 @@ canvas { display: block; max-width: 100%; }
   width: 0%; transition: width .8s cubic-bezier(.23,1,.32,1);
 }
 
+/* ── Delta badge (Revolut-style number pop) ── */
+.tile { position: relative; overflow: visible; }
+.delta-badge {
+  position: absolute; top: 10px; right: 12px;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--green); pointer-events: none;
+  opacity: 0; transform: translateY(0px);
+  transition: opacity .25s, transform 1s cubic-bezier(.2,1,.3,1);
+}
+.delta-badge.show { opacity: 1; transform: translateY(-14px); }
+
+/* ── Refresh button ── */
+.refresh-btn {
+  padding: 5px 8px !important; font-size: 14px !important; line-height: 1;
+  border-radius: 7px !important;
+}
+.refresh-btn.spinning { animation: spin .6s linear; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Last-updated timestamp ── */
+.last-updated {
+  font-size: 10px; font-family: var(--mono); color: var(--fg-dim);
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orbit-ring, .live-dot, .tile, .bar-fill, .limit-fill { animation: none !important; transition: none !important; }
   .tile { opacity: 1 !important; }
@@ -517,6 +542,8 @@ canvas { display: block; max-width: 100%; }
       <div class="live-dot" id="liveDot"></div>
       <span id="liveLabel">offline</span>
     </div>
+    <span class="last-updated" id="lastUpdated"></span>
+    <button class="refresh-btn" id="refreshBtn" title="Refresh">↻</button>
     <button id="themeBtn" title="Toggle theme" style="padding:5px 9px;font-size:12px">◑</button>
   </div>
 </header>
@@ -729,19 +756,37 @@ function computeTok(e) {
   return e.compute_tokens || ((e.input_tokens||0) + (e.cache_creation_tokens||0) + (e.output_tokens||0));
 }
 
-// ── Counter animation ─────────────────────────────────────────────────────────
+// ── Counter animations ────────────────────────────────────────────────────────
 function animateCounter(el, end, formatter, duration = 700) {
-  const start = 0;
+  animateCounterFrom(el, 0, end, formatter, duration);
+}
+
+function animateCounterFrom(el, from, to, formatter, duration = 500) {
+  if (from === to) return;
   const startTime = performance.now();
   function step(now) {
-    const elapsed = Math.min((now - startTime) / duration, 1);
-    const eased = 1 - Math.pow(1 - elapsed, 3); // ease-out-cubic
-    const val = start + (end - start) * eased;
-    el.textContent = formatter(Math.round(val));
-    if (elapsed < 1) requestAnimationFrame(step);
-    else el.textContent = formatter(end);
+    const t = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatter(Math.round(from + (to - from) * eased));
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = formatter(to);
   }
   requestAnimationFrame(step);
+}
+
+// ── Delta badge (floats up and fades, Revolut-style) ──────────────────────────
+function showDelta(elId, delta, formatter) {
+  if (delta <= 0) return;
+  const tile = document.getElementById(elId)?.closest('.tile');
+  if (!tile) return;
+  // Remove any existing badge first
+  tile.querySelector('.delta-badge')?.remove();
+  const badge = document.createElement('div');
+  badge.className = 'delta-badge';
+  badge.textContent = '+' + formatter(delta);
+  tile.appendChild(badge);
+  requestAnimationFrame(() => requestAnimationFrame(() => badge.classList.add('show')));
+  setTimeout(() => { badge.classList.remove('show'); setTimeout(() => badge.remove(), 400); }, 1800);
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -1093,29 +1138,138 @@ function renderLog(data) {
   document.getElementById('tableSection').hidden = false;
 }
 
-// ── Auto-fetch from local server ──────────────────────────────────────────────
-const liveDot   = document.getElementById('liveDot');
-const liveLabel = document.getElementById('liveLabel');
-async function fetchLive() {
-  try {
-    const res  = await fetch('/usage_log.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('bad status');
-    const data = await res.json();
-    if (!data.entries) throw new Error('no entries');
-    logData = data;
-    renderLog(data);
+// ── Live fetch — smart incremental update ─────────────────────────────────────
+const liveDot      = document.getElementById('liveDot');
+const liveLabel    = document.getElementById('liveLabel');
+const lastUpdEl    = document.getElementById('lastUpdated');
+const refreshBtn   = document.getElementById('refreshBtn');
+
+let prevSummary = null; // tracks last-rendered tile values
+
+function computeSummary(data) {
+  const today = new Date().toISOString().slice(0, 10);
+  let todayCost = 0, todayTok = 0;
+  data.entries.forEach(e => {
+    if ((e.ts||'').startsWith(today)) {
+      todayCost += e.cost_usd || 0;
+      todayTok  += computeTok(e);
+    }
+  });
+  const t = data.totals;
+  return {
+    entries:    data.entries.length,
+    todayTok,
+    todayCost,
+    totalTok:   (t.input_tokens||0) + (t.output_tokens||0),
+    totalCost:  t.cost_usd || 0,
+  };
+}
+
+function updateTilesIncremental(summary) {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prev = prevSummary;
+
+  if (!prev) return; // first load handled by renderLog
+
+  // Entries
+  if (summary.entries !== prev.entries) {
+    const el = document.getElementById('tv-entries');
+    if (el) { reduced ? (el.textContent = fmtNum(summary.entries)) : animateCounterFrom(el, prev.entries, summary.entries, fmtNum); }
+  }
+
+  // Today tokens
+  if (summary.todayTok !== prev.todayTok) {
+    const el = document.getElementById('tv-today');
+    if (el) {
+      if (!reduced) {
+        showDelta('tv-today', summary.todayTok - prev.todayTok, fmtTok);
+        animateCounterFrom(el, prev.todayTok, summary.todayTok, fmtTok);
+      } else { el.textContent = fmtTok(summary.todayTok); }
+    }
+    const sub = document.getElementById('tv-today-cost');
+    if (sub) sub.textContent = fmtCost(summary.todayCost);
+  }
+
+  // Total tokens
+  if (summary.totalTok !== prev.totalTok) {
+    const el = document.getElementById('tv-total');
+    if (el) {
+      if (!reduced) {
+        showDelta('tv-total', summary.totalTok - prev.totalTok, fmtTok);
+        animateCounterFrom(el, prev.totalTok, summary.totalTok, fmtTok);
+      } else { el.textContent = fmtTok(summary.totalTok); }
+    }
+  }
+
+  // Total cost
+  if (Math.abs(summary.totalCost - prev.totalCost) > 1e-9) {
+    const el = document.getElementById('tv-cost');
+    if (el) el.textContent = fmtCost(summary.totalCost);
+  }
+}
+
+function setLive(on) {
+  if (on) {
     liveDot.classList.add('on');
     liveLabel.textContent = 'live';
     liveLabel.style.color = 'var(--green)';
-    try { localStorage.setItem('tokenTrackerLog', JSON.stringify(data)); } catch(_) {}
-  } catch(_) {
+  } else {
     liveDot.classList.remove('on');
     liveLabel.textContent = 'offline';
     liveLabel.style.color = '';
   }
 }
+
+function stampUpdated() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  lastUpdEl.textContent = `${h}:${m}:${s}`;
+}
+
+async function fetchLive(forceFullRender = false) {
+  try {
+    const res  = await fetch('/usage_log.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (!data.entries) throw new Error();
+
+    setLive(true);
+    stampUpdated();
+
+    const summary = computeSummary(data);
+    const isFirstLoad = !logData;
+
+    logData = data;
+    try { localStorage.setItem('tokenTrackerLog', JSON.stringify(data)); } catch(_) {}
+
+    if (isFirstLoad || forceFullRender) {
+      // Full render: rebuilds tiles, heatmaps, chart, table
+      prevSummary = null;
+      renderLog(data);
+      prevSummary = summary;
+    } else {
+      // Incremental: only animate numbers that changed
+      updateTilesIncremental(summary);
+      prevSummary = summary;
+      renderLimitBar(data.entries);
+    }
+  } catch(_) {
+    setLive(false);
+  }
+}
+
+// Manual refresh button — spins icon, does a full re-render
+refreshBtn.addEventListener('click', () => {
+  refreshBtn.classList.add('spinning');
+  refreshBtn.addEventListener('animationend', () => refreshBtn.classList.remove('spinning'), { once: true });
+  fetchLive(true);
+});
+
+// Poll every 5 s — silent incremental update
 fetchLive();
-setInterval(fetchLive, 10_000);
+setInterval(fetchLive, 5_000);
 
 // ── Update check ──────────────────────────────────────────────────────────────
 async function checkUpdate() {
