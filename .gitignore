@@ -1,0 +1,9 @@
+.DS_Store
+build/
+swift_build/*.app
+swift_build/token-dashboard.html
+swift_build/plugin_live.py
+swift_build/"Token Tracker"
+usage_log.json
+__pycache__/
+*.pyc
