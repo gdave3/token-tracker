@@ -29,17 +29,22 @@ jobs:
       - name: Bundle .app
         working-directory: MacTokenTracker
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"   # e.g. "1.0.10" from tag "v1.0.10"
           APP="TokenTracker.app"
           rm -rf "$APP"
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
 
+          # Inject version into HTML before copying
+          sed "s/const APP_VERSION = '[^']*'/const APP_VERSION = 'v${VERSION}'/" \
+            token-dashboard.html > token-dashboard-versioned.html
+
           cp "Token Tracker" "$APP/Contents/MacOS/Token Tracker"
-          cp token-dashboard.html "$APP/Contents/MacOS/token-dashboard.html"
-          cp token-dashboard.html "$APP/Contents/Resources/token-dashboard.html"
+          cp token-dashboard-versioned.html "$APP/Contents/MacOS/token-dashboard.html"
+          cp token-dashboard-versioned.html "$APP/Contents/Resources/token-dashboard.html"
           [ -f AppIcon.icns ] && cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
-          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          cat > "$APP/Contents/Info.plist" << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -47,7 +52,8 @@ jobs:
               <key>CFBundleName</key><string>Token Tracker</string>
               <key>CFBundleDisplayName</key><string>Token Tracker</string>
               <key>CFBundleIdentifier</key><string>com.tokentracker.app</string>
-              <key>CFBundleVersion</key><string>1.0</string>
+              <key>CFBundleVersion</key><string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key><string>${VERSION}</string>
               <key>CFBundleExecutable</key><string>Token Tracker</string>
               <key>CFBundleIconFile</key><string>AppIcon</string>
               <key>LSUIElement</key><true/>

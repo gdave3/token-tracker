@@ -6,7 +6,9 @@ import Foundation
 
 // MARK: - Version & update config
 
-let kAppVersion = "1.0.8"
+let kAppVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
+               ?? (Bundle.main.infoDictionary?["CFBundleVersion"] as? String)
+               ?? "1.0.9"
 let kGitHubRepo = "gdave3/token-tracker"
 
 // MARK: - Auto Updater

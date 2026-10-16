@@ -504,6 +504,7 @@ canvas { display: block; max-width: 100%; }
 }
 .refresh-btn.spinning { animation: spin .6s linear; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
 
 /* ── Last-updated timestamp ── */
 .last-updated {
@@ -544,7 +545,7 @@ canvas { display: block; max-width: 100%; }
       <span id="liveLabel">offline</span>
     </div>
     <span class="last-updated" id="lastUpdated"></span>
-    <button class="refresh-btn" id="refreshBtn" title="Refresh">↻</button>
+    <button class="refresh-btn" id="refreshBtn" title="Refresh">↻ Refresh</button>
     <button id="themeBtn" title="Toggle theme" style="padding:5px 9px;font-size:12px">◑</button>
   </div>
 </header>
@@ -727,7 +728,7 @@ python tracker.py <span class="cmd-kw">prices</span></pre>
 
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.0.8';
+const APP_VERSION = 'v1.0.10';
 const GITHUB_REPO = 'gdave3/token-tracker';
 const MODELS = {
   "claude-opus-5-5":   { input: 4.00,  output: 20.00, label: "Claude Opus 5.5"   },
@@ -1172,10 +1173,32 @@ function updateTilesIncremental(summary) {
 
   if (!prev) return; // first load handled by renderLog
 
-  // Entries
+  // Entries — animate counter + prepend new rows to top of table
   if (summary.entries !== prev.entries) {
     const el = document.getElementById('tv-entries');
     if (el) { reduced ? (el.textContent = fmtNum(summary.entries)) : animateCounterFrom(el, prev.entries, summary.entries, fmtNum); }
+    // Prepend any new entries to the table (newest-first)
+    const tbody = document.getElementById('logTableBody');
+    if (tbody && logData) {
+      const newCount = summary.entries - prev.entries;
+      if (newCount > 0) {
+        const newEntries = logData.entries.slice(-newCount).reverse();
+        newEntries.forEach(e => {
+          const ts    = (e.ts||'').replace('T',' ').replace('Z','').slice(0,16);
+          const label = (MODELS[e.model||'']||{}).label || e.model || '—';
+          const tr = document.createElement('tr');
+          tr.style.animation = 'fadeIn .4s ease';
+          tr.innerHTML = `
+            <td>${ts}</td>
+            <td><span class="model-badge">${label}</span></td>
+            <td class="num">${fmtNum(e.input_tokens||0)}</td>
+            <td class="num">${fmtNum(e.output_tokens||0)}</td>
+            <td class="num cost-cell">${fmtCost(e.cost_usd||0)}</td>
+            <td style="color:var(--fg-dim)">${e.note||''}</td>`;
+          tbody.insertBefore(tr, tbody.firstChild);
+        });
+      }
+    }
   }
 
   // Today tokens
