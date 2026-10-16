@@ -215,6 +215,8 @@ class LogManager {
         save()
     }
 
+    var hasEntries: Bool { lock.lock(); defer { lock.unlock() }; return !entries.isEmpty }
+
     func todayComputeTokens() -> Int {
         let today = String(ISO8601DateFormatter().string(from: Date()).prefix(10))
         lock.lock()
@@ -288,13 +290,49 @@ class JsonlWatcher {
     private var seenRequests: Set<String> = []
     private let lock = NSLock()
     private let logManager: LogManager
+    private let positionsFile = logDir.appendingPathComponent("jsonl_positions.json")
     private let isoFmt: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
 
-    init(logManager: LogManager) { self.logManager = logManager }
+    init(logManager: LogManager) {
+        self.logManager = logManager
+        loadPositions()
+    }
+
+    // Persist file positions so restarts never re-process already-seen bytes
+    private func loadPositions() {
+        guard let data = try? Data(contentsOf: positionsFile),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        lock.lock()
+        for (k, v) in json { if let n = v as? UInt64 { filePositions[k] = n } }
+        lock.unlock()
+    }
+
+    private func savePositions() {
+        lock.lock()
+        let snapshot = filePositions.mapValues { $0 as Any }
+        lock.unlock()
+        guard let data = try? JSONSerialization.data(withJSONObject: snapshot) else { return }
+        try? data.write(to: positionsFile)
+    }
+
+    // Seek all NEW (unseen) files to EOF without reading — skip history on first encounter
+    func prime() {
+        forEachJsonl { url in
+            self.lock.lock()
+            let known = self.filePositions[url.path] != nil
+            self.lock.unlock()
+            guard !known else { return } // already have a saved position for this file
+            guard let fh = try? FileHandle(forReadingFrom: url) else { return }
+            let end = (try? fh.seekToEnd()) ?? 0
+            try? fh.close()
+            self.lock.lock(); self.filePositions[url.path] = end; self.lock.unlock()
+        }
+        savePositions()
+    }
 
     // Scan all existing JSONL files as history, leave positions at EOF
     func loadHistory() {
@@ -302,14 +340,26 @@ class JsonlWatcher {
             self.filePositions[url.path] = 0
             self.scan(url, entryType: "history")
         }
+        savePositions()
     }
 
     // Poll — called on timer; scans new bytes in existing files + picks up new files
     func poll() {
         forEachJsonl { url in
-            if self.filePositions[url.path] == nil { self.filePositions[url.path] = 0 }
+            self.lock.lock()
+            let known = self.filePositions[url.path] != nil
+            self.lock.unlock()
+            if !known {
+                // New file encountered during polling — seek to EOF so we only get future data
+                guard let fh = try? FileHandle(forReadingFrom: url) else { return }
+                let end = (try? fh.seekToEnd()) ?? 0
+                try? fh.close()
+                self.lock.lock(); self.filePositions[url.path] = end; self.lock.unlock()
+                return
+            }
             self.scan(url, entryType: "live")
         }
+        savePositions()
     }
 
     private func forEachJsonl(_ body: (URL) -> Void) {
@@ -399,9 +449,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         httpServer = TokenHTTPServer(logManager: logManager)
         watcher    = JsonlWatcher(logManager: logManager)
 
-        // Backfill history then start polling for live data
+        // First run (no positions file): backfill history from JSONL files.
+        // Subsequent runs: positions loaded from disk — only new bytes are processed.
+        // New JSONL files encountered mid-session are primed to EOF (not backfilled).
         DispatchQueue.global(qos: .utility).async {
-            self.watcher.loadHistory()
+            if self.logManager.hasEntries {
+                self.watcher.prime()   // skip history for any new files not yet in positions file
+            } else {
+                self.watcher.loadHistory()  // first ever run — backfill everything
+            }
             DispatchQueue.main.async { self.updateTitle() }
         }
 
