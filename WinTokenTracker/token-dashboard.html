@@ -421,6 +421,78 @@ th.sort-asc  .sort-icon, th.sort-desc .sort-icon { color: var(--accent); }
   font-family: var(--mono);
 }
 .cost-cell { color: var(--green); }
+#logTableBody tr { cursor: pointer; transition: background .12s; }
+#logTableBody tr:hover { background: var(--bg-hover); }
+
+/* ── Entry detail modal ── */
+#entryModal {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+#entryModal.open { opacity: 1; pointer-events: auto; }
+#entryPanel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-bottom: none; border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 600px;
+  padding: 24px 28px 32px;
+  transform: translateY(24px); transition: transform .22s cubic-bezier(.22,1,.36,1);
+}
+#entryModal.open #entryPanel { transform: translateY(0); }
+.em-close {
+  position: absolute; top: 16px; right: 20px;
+  background: none; border: none; font-size: 20px; line-height: 1;
+  color: var(--fg-dim); cursor: pointer; padding: 4px 8px;
+}
+.em-close:hover { color: var(--fg); }
+.em-ts {
+  font-size: 13px; font-family: var(--mono); color: var(--fg-dim);
+  margin: 0 0 6px;
+}
+.em-model {
+  font-size: 18px; font-weight: 600; font-family: var(--sans);
+  color: var(--fg); margin: 0 0 20px;
+}
+.em-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.em-stat {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+}
+.em-stat-label {
+  font-size: 11px; font-family: var(--mono); color: var(--fg-dim);
+  text-transform: uppercase; letter-spacing: .06em; margin: 0 0 4px;
+}
+.em-stat-value {
+  font-size: 20px; font-weight: 600; font-family: var(--mono); color: var(--fg);
+  margin: 0;
+}
+.em-stat-value.green { color: var(--green); }
+.em-bar-row { margin-top: 18px; }
+.em-bar-label {
+  display: flex; justify-content: space-between;
+  font-size: 11px; font-family: var(--mono); color: var(--fg-dim);
+  margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em;
+}
+.em-bar-track {
+  height: 6px; border-radius: 4px; background: var(--bg-input);
+  overflow: hidden; display: flex;
+}
+.em-bar-fill {
+  border-radius: 4px; transition: width .4s cubic-bezier(.22,1,.36,1);
+}
+.em-note {
+  margin-top: 16px; font-size: 12px; font-family: var(--mono);
+  color: var(--fg-dim); word-break: break-all;
+}
+.em-type-badge {
+  display: inline-block; font-size: 10px; padding: 2px 8px;
+  border-radius: 20px; border: 1px solid var(--border);
+  font-family: var(--mono); color: var(--fg-dim); margin-left: 8px;
+  vertical-align: middle;
+}
 .num { text-align: right; }
 .empty-state {
   text-align: center; padding: 48px 16px;
@@ -670,6 +742,18 @@ canvas { display: block; max-width: 100%; }
 </script>
 
 <div id="hmTooltip"></div>
+
+<!-- Entry detail modal -->
+<div id="entryModal" role="dialog" aria-modal="true" aria-label="Entry details">
+  <div id="entryPanel" style="position:relative">
+    <button class="em-close" id="emClose" aria-label="Close">✕</button>
+    <p class="em-ts" id="emTs"></p>
+    <p class="em-model" id="emModel"></p>
+    <div class="em-grid" id="emGrid"></div>
+    <div class="em-bar-row" id="emBarRow"></div>
+    <p class="em-note" id="emNote"></p>
+  </div>
+</div>
 <script>
 (function(){
   const tip = document.getElementById('hmTooltip');
@@ -1356,6 +1440,7 @@ function renderTable() {
       <td class="num">${fmtNum(e.output_tokens||0)}</td>
       <td class="num cost-cell">${fmtCost(e.cost_usd||0)}</td>
       <td style="color:var(--fg-dim)">${e.note||''}</td>`;
+    tr.addEventListener('click', () => openEntryDetail(e));
     tbody.appendChild(tr);
   });
 
@@ -1375,6 +1460,89 @@ function renderTable() {
   if (pgPrev) pgPrev.disabled = tablePage === 0;
   if (pgNext) pgNext.disabled = tablePage >= pages - 1;
 }
+
+// ── Entry detail modal ────────────────────────────────────────────────────────
+function openEntryDetail(e) {
+  const modal   = document.getElementById('entryModal');
+  const ts      = new Date(e.ts);
+  const label   = (MODELS[e.model||'']||{}).label || e.model || 'Unknown model';
+  const inp     = e.input_tokens       || 0;
+  const cc      = e.cache_creation_tokens || 0;
+  const cr      = e.cache_read_tokens  || 0;
+  const out     = e.output_tokens      || 0;
+  const cost    = e.cost_usd           || 0;
+  const total   = inp + cc + cr + out;
+
+  document.getElementById('emTs').textContent =
+    ts.toLocaleString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric',
+      hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+  document.getElementById('emModel').innerHTML =
+    `${label}<span class="em-type-badge">${e.type||'live'}</span>`;
+
+  const pctInp = total ? (inp / total * 100).toFixed(1) : 0;
+  const pctOut = total ? (out / total * 100).toFixed(1) : 0;
+  const pctCc  = total ? (cc  / total * 100).toFixed(1) : 0;
+  const pctCr  = total ? (cr  / total * 100).toFixed(1) : 0;
+
+  document.getElementById('emGrid').innerHTML = `
+    <div class="em-stat">
+      <p class="em-stat-label">Input tokens</p>
+      <p class="em-stat-value">${fmtNum(inp)}</p>
+    </div>
+    <div class="em-stat">
+      <p class="em-stat-label">Output tokens</p>
+      <p class="em-stat-value">${fmtNum(out)}</p>
+    </div>
+    ${cc ? `<div class="em-stat">
+      <p class="em-stat-label">Cache write</p>
+      <p class="em-stat-value">${fmtNum(cc)}</p>
+    </div>` : ''}
+    ${cr ? `<div class="em-stat">
+      <p class="em-stat-label">Cache read</p>
+      <p class="em-stat-value">${fmtNum(cr)}</p>
+    </div>` : ''}
+    <div class="em-stat">
+      <p class="em-stat-label">Total tokens</p>
+      <p class="em-stat-value">${fmtNum(total)}</p>
+    </div>
+    <div class="em-stat">
+      <p class="em-stat-label">Cost</p>
+      <p class="em-stat-value green">${fmtCost(cost)}</p>
+    </div>`;
+
+  document.getElementById('emBarRow').innerHTML = `
+    <div class="em-bar-label">
+      <span>Token breakdown</span>
+      <span>${fmtNum(total)} total</span>
+    </div>
+    <div class="em-bar-track">
+      <div class="em-bar-fill" style="width:${pctInp}%;background:var(--accent)"></div>
+      <div class="em-bar-fill" style="width:${pctOut}%;background:var(--green)"></div>
+      ${cc ? `<div class="em-bar-fill" style="width:${pctCc}%;background:var(--fg-dim)"></div>` : ''}
+      ${cr ? `<div class="em-bar-fill" style="width:${pctCr}%;background:rgba(100,160,255,.5)"></div>` : ''}
+    </div>
+    <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;font-family:var(--mono);color:var(--fg-dim)">
+      <span><span style="color:var(--accent)">■</span> input ${pctInp}%</span>
+      <span><span style="color:var(--green)">■</span> output ${pctOut}%</span>
+      ${cc ? `<span><span style="color:var(--fg-dim)">■</span> cache write ${pctCc}%</span>` : ''}
+      ${cr ? `<span><span style="color:rgba(100,160,255,.8)">■</span> cache read ${pctCr}%</span>` : ''}
+    </div>`;
+
+  document.getElementById('emNote').textContent = e.note ? `Source: ${e.note}` : '';
+
+  modal.classList.add('open');
+}
+
+function closeEntryModal() {
+  document.getElementById('entryModal').classList.remove('open');
+}
+
+document.getElementById('emClose').addEventListener('click', closeEntryModal);
+document.getElementById('entryModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('entryModal')) closeEntryModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEntryModal(); });
 
 // Sort header clicks
 document.addEventListener('click', e => {
