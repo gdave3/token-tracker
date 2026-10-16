@@ -235,6 +235,34 @@ extension Double {
     }
 }
 
+// MARK: - Indexing Progress
+
+class IndexingProgress {
+    static let shared = IndexingProgress()
+    private let lock = NSLock()
+    private var _total = 0
+    private var _done  = 0
+    private var _finished = false
+
+    func start(total: Int) {
+        lock.lock(); _total = total; _done = 0; _finished = false; lock.unlock()
+    }
+    func advance() {
+        lock.lock(); _done += 1; lock.unlock()
+    }
+    func finish() {
+        lock.lock(); _finished = true; lock.unlock()
+    }
+    func json() -> Data {
+        lock.lock()
+        let t = _total; let d = _done; let f = _finished
+        lock.unlock()
+        let pct = t > 0 ? Double(d) / Double(t) : 1.0
+        let s = "{\"indexing\":\(!f),\"done\":\(d),\"total\":\(t),\"pct\":\(String(format:"%.3f",pct))}"
+        return Data(s.utf8)
+    }
+}
+
 // MARK: - Minimal HTTP Server
 
 class TokenHTTPServer {
@@ -269,6 +297,9 @@ class TokenHTTPServer {
         let (body, ct): (Data, String)
         if path == "/usage_log.json" {
             body = logManager.readBytes()
+            ct   = "application/json"
+        } else if path == "/status" {
+            body = IndexingProgress.shared.json()
             ct   = "application/json"
         } else {
             body = (try? Data(contentsOf: dashboardPath))
@@ -325,21 +356,27 @@ class JsonlWatcher {
             self.lock.lock()
             let known = self.filePositions[url.path] != nil
             self.lock.unlock()
-            guard !known else { return } // already have a saved position for this file
+            guard !known else { return }
             guard let fh = try? FileHandle(forReadingFrom: url) else { return }
             let end = (try? fh.seekToEnd()) ?? 0
             try? fh.close()
             self.lock.lock(); self.filePositions[url.path] = end; self.lock.unlock()
         }
         savePositions()
+        IndexingProgress.shared.finish()
     }
 
     // Scan all existing JSONL files as history, leave positions at EOF
     func loadHistory() {
-        forEachJsonl { url in
-            self.filePositions[url.path] = 0
-            self.scan(url, entryType: "history")
+        var urls: [URL] = []
+        forEachJsonl { urls.append($0) }
+        IndexingProgress.shared.start(total: urls.count)
+        for url in urls {
+            filePositions[url.path] = 0
+            scan(url, entryType: "history")
+            IndexingProgress.shared.advance()
         }
+        IndexingProgress.shared.finish()
         savePositions()
     }
 

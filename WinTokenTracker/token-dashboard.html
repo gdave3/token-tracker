@@ -85,6 +85,26 @@ body {
   padding-block: 0;
 }
 
+/* ── Indexing progress bar ── */
+#indexingBar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+  background: var(--bg-card);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 10px max(16px, env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--fg-dim);
+  transition: opacity .4s ease, transform .4s ease;
+}
+#indexingBar.done { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+#indexingBar .ib-track {
+  flex: 1; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;
+}
+#indexingBar .ib-fill {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  width: 0%; transition: width .3s ease;
+}
+#indexingBar .ib-label { white-space: nowrap; font-family: var(--mono); font-size: 11px; }
+
 /* ── Update banner ── */
 #updateBanner {
   display: none;
@@ -520,6 +540,10 @@ canvas { display: block; max-width: 100%; }
 </style>
 
 <!-- ── Update banner (injected by JS) ── -->
+<div id="indexingBar">
+  <div class="ib-track"><div class="ib-fill" id="ibFill"></div></div>
+  <span class="ib-label" id="ibLabel">Indexing…</span>
+</div>
 <div id="updateBanner"></div>
 
 <header>
@@ -1294,6 +1318,35 @@ refreshBtn.addEventListener('click', () => {
 // Poll every 5 s — silent incremental update
 fetchLive();
 setInterval(fetchLive, 5_000);
+
+// ── Indexing progress bar ─────────────────────────────────────────────────────
+(async function pollIndexing() {
+  const bar   = document.getElementById('indexingBar');
+  const fill  = document.getElementById('ibFill');
+  const label = document.getElementById('ibLabel');
+  // Poll /status until indexing is done
+  while (true) {
+    try {
+      const res = await fetch('/status', { cache: 'no-store' });
+      if (res.ok) {
+        const s = await res.json();
+        const pct = Math.round((s.pct || 0) * 100);
+        fill.style.width = pct + '%';
+        label.textContent = s.indexing
+          ? `Indexing ${s.done}/${s.total} files…`
+          : `Indexed ${s.total} files`;
+        if (!s.indexing) {
+          // Briefly show 100%, then fade out
+          fill.style.width = '100%';
+          await new Promise(r => setTimeout(r, 600));
+          bar.classList.add('done');
+          break;
+        }
+      }
+    } catch(_) {}
+    await new Promise(r => setTimeout(r, 300));
+  }
+})();
 
 // ── Update check ──────────────────────────────────────────────────────────────
 async function checkUpdate() {
