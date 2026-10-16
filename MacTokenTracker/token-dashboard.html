@@ -1304,7 +1304,10 @@ async function checkUpdate() {
     if (!res.ok) return;
     const rel = await res.json();
     const latest = rel.tag_name || '';
-    if (!latest || latest === APP_VERSION) return;
+    if (!latest) return;
+    const semver = s => (s.startsWith('v') ? s.slice(1) : s).split('.').map(Number);
+    const isNewer = (a, b) => { const [av,bv]=[semver(a),semver(b)]; for(let i=0;i<3;i++){if((av[i]||0)!==(bv[i]||0))return(av[i]||0)>(bv[i]||0);} return false; };
+    if (!isNewer(latest, APP_VERSION)) return;
     // Newer version available
     const banner = document.getElementById('updateBanner');
     const dlUrl  = rel.html_url || `https://github.com/${GITHUB_REPO}/releases/latest`;
