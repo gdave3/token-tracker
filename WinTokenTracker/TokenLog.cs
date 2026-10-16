@@ -81,8 +81,8 @@ public class LogManager
 
     private double CostUsd(int inp, int outp, int cc, int cr, string model)
     {
-        var r = Rates.GetValueOrDefault(model, (3.0, 15.0, 3.75, 0.30));
-        return (inp * r.inp + outp * r.outp + cc * r.cc + cr * r.cr) / 1_000_000;
+        var (ri, ro, rcc, rcr) = Rates.GetValueOrDefault(model, (3.0, 15.0, 3.75, 0.30));
+        return (inp * ri + outp * ro + cc * rcc + cr * rcr) / 1_000_000;
     }
 
     public void AddEntry(string ts, string type, string model, string note,
