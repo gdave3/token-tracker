@@ -552,55 +552,100 @@ canvas { display: block; max-width: 100%; }
 (function(){
   const canvas = document.getElementById('matrixCanvas');
   const ctx    = canvas.getContext('2d');
-  const CHARS  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*+=[]{}|<>?/\\';
-  const FS     = 13;
-  let W, H, cols, drops = [];
-  let mx = -9999, my = -9999;
+  const CHARS  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&+=[]{}|<>?/\\';
+  const FS        = 13;   // font size / column width
+  const WAVE_SPD  = 320;  // px/s ring expansion speed
+  const FALL_SPD  = 180;  // px/s character fall speed
+  const TRAIL     = 16;   // characters per stream tail
+  const FADE_MS   = 800;  // how long streams fade after wave passes
 
+  let W, H;
   function resize() {
     W = canvas.width  = window.innerWidth;
     H = canvas.height = window.innerHeight;
-    cols = Math.floor(W / FS);
-    drops = Array.from({length: cols}, (_, i) => drops[i] ?? (Math.random() * -H / FS));
   }
-
   window.addEventListener('resize', resize);
-  window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
   resize();
 
-  ctx.fillStyle = '#0C0C0D';
-  ctx.fillRect(0, 0, W, H);
+  // streams[colX] = { startY, born, chars[] }
+  // waves[]       = { ox, oy, born }
+  const streams = new Map(); // key = col index
+  const waves   = [];
 
-  function draw() {
-    ctx.fillStyle = 'rgba(12,12,13,0.045)';
-    ctx.fillRect(0, 0, W, H);
+  document.addEventListener('click', e => {
+    waves.push({ ox: e.clientX, oy: e.clientY, born: performance.now() });
+  });
+
+  function draw(now) {
+    requestAnimationFrame(draw);
+    ctx.clearRect(0, 0, W, H);
     ctx.font = FS + 'px "JetBrains Mono",monospace';
 
-    for (let i = 0; i < cols; i++) {
-      const x  = i * FS + FS * 0.5;
-      const y  = drops[i] * FS;
-      const ch = CHARS[Math.random() * CHARS.length | 0];
-      const dx = x - mx, dy = y - my;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      const R    = 180;
+    // Advance each wave ring and spawn streams where the ring front hits columns
+    for (let wi = waves.length - 1; wi >= 0; wi--) {
+      const w   = waves[wi];
+      const age = now - w.born;
+      const maxR = Math.hypot(W, H);
+      const r   = WAVE_SPD * age / 1000;
 
-      if (dist < R) {
-        const t = 1 - dist / R;
-        const r = (200 + t * 55) | 0;
-        const g = (130 + t * 70) | 0;
-        const b = (100 + t * 50) | 0;
-        ctx.fillStyle = `rgba(${r},${g},${b},${0.55 + t * 0.45})`;
-      } else {
-        ctx.fillStyle = `rgba(30,110,100,${0.10 + Math.random() * 0.08})`;
+      if (r > maxR) { waves.splice(wi, 1); continue; }
+
+      // Check each column — spawn stream when ring front crosses it
+      const numCols = Math.ceil(W / FS);
+      for (let ci = 0; ci < numCols; ci++) {
+        const cx   = ci * FS + FS / 2;
+        const dist = Math.hypot(cx - w.ox, 0); // horizontal distance only
+        // Wave ring passes this column when r ≈ dist (within one frame's width)
+        const dr = WAVE_SPD / 25; // ~one frame at 25fps leeway
+        if (r >= dist - dr && r < dist + dr) {
+          // Start y: where the ring intersects this column (upper arc)
+          const dy2  = r * r - (cx - w.ox) * (cx - w.ox);
+          const startY = dy2 >= 0 ? w.oy - Math.sqrt(dy2) : w.oy;
+          const key  = `${wi}_${ci}`;
+          if (!streams.has(key)) {
+            streams.set(key, {
+              x: cx, startY,
+              born: now,
+              chars: Array.from({length: TRAIL + 4}, () => CHARS[Math.random() * CHARS.length | 0])
+            });
+          }
+        }
       }
 
-      ctx.fillText(ch, x, y);
-      if (y > H && Math.random() > 0.978) drops[i] = 0;
-      drops[i] += 0.4;
+      // Draw the wave ring itself (faint arc)
+      const ringAlpha = Math.max(0, 0.18 * (1 - r / maxR));
+      ctx.strokeStyle = `rgba(217,119,87,${ringAlpha})`;
+      ctx.lineWidth   = 1.5;
+      ctx.beginPath();
+      ctx.arc(w.ox, w.oy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Draw and age streams
+    for (const [key, s] of streams) {
+      const age    = now - s.born;
+      const headY  = s.startY + FALL_SPD * age / 1000;
+      const fadeT  = Math.max(0, 1 - age / (FADE_MS + TRAIL * FS / FALL_SPD * 1000));
+
+      if (fadeT <= 0) { streams.delete(key); continue; }
+
+      for (let j = 0; j < TRAIL; j++) {
+        const y = headY - j * FS;
+        if (y < -FS || y > H + FS) continue;
+        if (Math.random() < 0.06) s.chars[j] = CHARS[Math.random() * CHARS.length | 0];
+
+        const t = 1 - j / TRAIL;
+        if (j === 0) {
+          ctx.fillStyle = `rgba(255,230,215,${fadeT * 0.95})`;
+        } else {
+          ctx.fillStyle = `rgba(217,${(119 * t)|0},${(87 * t)|0},${fadeT * t * 0.9})`;
+        }
+        ctx.fillText(s.chars[j], s.x, y);
+      }
     }
   }
 
-  setInterval(draw, 40);
+  requestAnimationFrame(draw);
 })();
 </script>
 
