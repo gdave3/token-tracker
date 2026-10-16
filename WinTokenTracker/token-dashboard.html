@@ -395,6 +395,26 @@ td {
 }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg-hover); }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--fg); }
+th.sortable .sort-icon { opacity: .35; font-style: normal; margin-left: 3px; }
+th.sort-asc  .sort-icon { opacity: 1; }
+th.sort-desc .sort-icon { opacity: 1; }
+th.sort-asc  .sort-icon::after { content: '↑'; }
+th.sort-desc .sort-icon::after { content: '↓'; }
+th.sort-asc  .sort-icon, th.sort-desc .sort-icon { color: var(--accent); }
+.pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; padding: 14px 0 4px;
+  font-size: 12px; font-family: var(--mono); color: var(--fg-dim);
+}
+.pagination button {
+  background: var(--bg-input); border: 1px solid var(--border);
+  color: var(--fg); border-radius: 6px; padding: 4px 12px;
+  font-size: 13px; cursor: pointer; transition: background .15s;
+}
+.pagination button:hover:not(:disabled) { background: var(--bg-hover); }
+.pagination button:disabled { opacity: .3; cursor: default; }
 .model-badge {
   display: inline-block; font-size: 11px; padding: 2px 8px;
   border-radius: 20px; border: 1px solid var(--border); color: var(--fg-dim);
@@ -796,13 +816,21 @@ canvas { display: block; max-width: 100%; }
       <table>
         <thead>
           <tr>
-            <th>Timestamp</th><th>Model</th>
-            <th class="num">Input</th><th class="num">Output</th>
-            <th class="num">Cost</th><th>Note</th>
+            <th data-sort="ts"       class="sortable">Timestamp <span class="sort-icon">↕</span></th>
+            <th>Model</th>
+            <th data-sort="input"    class="sortable num">Input <span class="sort-icon">↕</span></th>
+            <th data-sort="output"   class="sortable num">Output <span class="sort-icon">↕</span></th>
+            <th data-sort="cost"     class="sortable num">Cost <span class="sort-icon">↕</span></th>
+            <th>Note</th>
           </tr>
         </thead>
         <tbody id="logTableBody"></tbody>
       </table>
+    </div>
+    <div class="pagination" id="pagination">
+      <button id="pgPrev">←</button>
+      <span id="pgInfo"></span>
+      <button id="pgNext">→</button>
     </div>
   </div>
 
@@ -1281,11 +1309,43 @@ function renderLog(data) {
   });
 
   renderChart(data.entries);
+  renderTable();
+  document.getElementById('tableSection').hidden = false;
+}
 
-  // Table
+// ── Sortable paginated table ──────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+let tablePage   = 0;          // current page (0-indexed)
+let sortKey     = 'ts';       // 'ts' | 'input' | 'output' | 'cost'
+let sortDir     = 'desc';     // 'asc' | 'desc'
+
+function sortedEntries() {
+  if (!logData) return [];
+  const arr = [...logData.entries];
+  arr.sort((a, b) => {
+    let av, bv;
+    if      (sortKey === 'ts')     { av = a.ts  || ''; bv = b.ts  || ''; }
+    else if (sortKey === 'input')  { av = a.input_tokens  || 0; bv = b.input_tokens  || 0; }
+    else if (sortKey === 'output') { av = a.output_tokens || 0; bv = b.output_tokens || 0; }
+    else if (sortKey === 'cost')   { av = a.cost_usd || 0; bv = b.cost_usd || 0; }
+    if (av < bv) return sortDir === 'asc' ? -1 :  1;
+    if (av > bv) return sortDir === 'asc' ?  1 : -1;
+    return 0;
+  });
+  return arr;
+}
+
+function renderTable() {
   const tbody = document.getElementById('logTableBody');
+  if (!tbody) return;
+  const all    = sortedEntries();
+  const total  = all.length;
+  const pages  = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  tablePage    = Math.min(tablePage, pages - 1);
+  const slice  = all.slice(tablePage * PAGE_SIZE, (tablePage + 1) * PAGE_SIZE);
+
   tbody.innerHTML = '';
-  [...data.entries].reverse().forEach(e => {
+  slice.forEach(e => {
     const ts    = fmtTs(e.ts);
     const label = (MODELS[e.model||'']||{}).label || e.model || '—';
     const tr    = document.createElement('tr');
@@ -1298,8 +1358,38 @@ function renderLog(data) {
       <td style="color:var(--fg-dim)">${e.note||''}</td>`;
     tbody.appendChild(tr);
   });
-  document.getElementById('tableSection').hidden = false;
+
+  // Update sort icons
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.sort === sortKey) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = '↕';
+  });
+
+  // Pagination
+  const pgInfo = document.getElementById('pgInfo');
+  const pgPrev = document.getElementById('pgPrev');
+  const pgNext = document.getElementById('pgNext');
+  if (pgInfo) pgInfo.textContent = total === 0 ? '0 entries' : `${tablePage * PAGE_SIZE + 1}–${Math.min((tablePage + 1) * PAGE_SIZE, total)} of ${fmtNum(total)}`;
+  if (pgPrev) pgPrev.disabled = tablePage === 0;
+  if (pgNext) pgNext.disabled = tablePage >= pages - 1;
 }
+
+// Sort header clicks
+document.addEventListener('click', e => {
+  const th = e.target.closest('th.sortable');
+  if (!th) return;
+  const key = th.dataset.sort;
+  if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortKey = key; sortDir = key === 'ts' ? 'desc' : 'desc'; }
+  tablePage = 0;
+  renderTable();
+});
+
+// Pagination buttons
+document.getElementById('pgPrev')?.addEventListener('click', () => { tablePage--; renderTable(); });
+document.getElementById('pgNext')?.addEventListener('click', () => { tablePage++; renderTable(); });
 
 // ── Live fetch — smart incremental update ─────────────────────────────────────
 const liveDot      = document.getElementById('liveDot');
@@ -1338,28 +1428,8 @@ function updateTilesIncremental(summary) {
   if (summary.entries !== prev.entries) {
     const el = document.getElementById('tv-entries');
     if (el) { reduced ? (el.textContent = fmtNum(summary.entries)) : animateCounterFrom(el, prev.entries, summary.entries, fmtNum); }
-    // Prepend any new entries to the table (newest-first)
-    const tbody = document.getElementById('logTableBody');
-    if (tbody && logData) {
-      const newCount = summary.entries - prev.entries;
-      if (newCount > 0) {
-        const newEntries = logData.entries.slice(-newCount).reverse();
-        newEntries.forEach(e => {
-          const ts    = fmtTs(e.ts);
-          const label = (MODELS[e.model||'']||{}).label || e.model || '—';
-          const tr = document.createElement('tr');
-          tr.style.animation = 'fadeIn .4s ease';
-          tr.innerHTML = `
-            <td>${ts}</td>
-            <td><span class="model-badge">${label}</span></td>
-            <td class="num">${fmtNum(e.input_tokens||0)}</td>
-            <td class="num">${fmtNum(e.output_tokens||0)}</td>
-            <td class="num cost-cell">${fmtCost(e.cost_usd||0)}</td>
-            <td style="color:var(--fg-dim)">${e.note||''}</td>`;
-          tbody.insertBefore(tr, tbody.firstChild);
-        });
-      }
-    }
+    // Re-render table to show new entries in correct sort/page
+    renderTable();
   }
 
   // Today tokens
