@@ -21,11 +21,15 @@ public class JsonlWatcher : IDisposable
     public void LoadHistory()
     {
         if (!Directory.Exists(_projectsPath)) return;
-        foreach (var file in Directory.EnumerateFiles(_projectsPath, "*.jsonl", SearchOption.AllDirectories))
+        var files = Directory.EnumerateFiles(_projectsPath, "*.jsonl", SearchOption.AllDirectories).ToList();
+        IndexingProgress.Instance.Start(files.Count);
+        foreach (var file in files)
         {
             lock (_lock) _filePositions[file] = 0;
             Scan(file, "history");
+            IndexingProgress.Instance.Advance();
         }
+        IndexingProgress.Instance.Finish();
     }
 
     // Set all positions to EOF — only new data will be captured
@@ -34,6 +38,7 @@ public class JsonlWatcher : IDisposable
         if (!Directory.Exists(_projectsPath)) return;
         foreach (var file in Directory.EnumerateFiles(_projectsPath, "*.jsonl", SearchOption.AllDirectories))
             lock (_lock) _filePositions[file] = new FileInfo(file).Length;
+        IndexingProgress.Instance.Finish();
     }
 
     // Start FSW for live event-driven watching

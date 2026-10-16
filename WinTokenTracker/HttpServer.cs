@@ -1,6 +1,27 @@
 using System.Net;
+using System.Text;
 
 namespace TokenTracker;
+
+public class IndexingProgress
+{
+    public static readonly IndexingProgress Instance = new();
+    private readonly object _lock = new();
+    private int _total, _done;
+    private bool _finished;
+
+    public void Start(int total)  { lock (_lock) { _total = total; _done = 0; _finished = false; } }
+    public void Advance()         { lock (_lock) _done++; }
+    public void Finish()          { lock (_lock) _finished = true; }
+    public string ToJson()
+    {
+        lock (_lock)
+        {
+            var pct = _total > 0 ? (double)_done / _total : 1.0;
+            return $"{{\"indexing\":{(!_finished ? "true" : "false")},\"done\":{_done},\"total\":{_total},\"pct\":{pct:F3}}}";
+        }
+    }
+}
 
 public class TokenHttpServer
 {
@@ -48,6 +69,11 @@ public class TokenHttpServer
             if (path == "/usage_log.json")
             {
                 body        = _log.ReadBytes();
+                contentType = "application/json";
+            }
+            else if (path == "/status")
+            {
+                body        = Encoding.UTF8.GetBytes(IndexingProgress.Instance.ToJson());
                 contentType = "application/json";
             }
             else
