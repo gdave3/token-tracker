@@ -527,61 +527,70 @@ func promptDetail(path: String) -> String {
     func parseDate(_ s: String) -> Date? { isoFmt.date(from: s) ?? isoFmt2.date(from: s) }
     let targetDate = parseDate(tsStr)
 
-    // Walk lines: track last user text; collect all assistant text blocks per requestId
-    var lastUserText = ""
-    var assistantChunks: [String: [String]] = [:]  // requestId -> [text]
-    var assistantTs: [String: Date] = [:]           // requestId -> earliest ts with usage
-    var candidateRid = ""
-    var bestDiff = Double.infinity
-
-    for line in text.components(separatedBy: "\n") {
+    // Build a flat ordered list of relevant events so we can correlate by position
+    struct Event {
+        let idx: Int
+        let type: String       // "user" | "assistant"
+        let rid: String
+        let ts: Date?
+        let text: String
+        let hasUsage: Bool
+    }
+    var events: [Event] = []
+    let lines = text.components(separatedBy: "\n")
+    for (idx, line) in lines.enumerated() {
         let t = line.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty,
               let data = t.data(using: .utf8),
               let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-
         let type = obj["type"] as? String ?? ""
+        guard type == "user" || type == "assistant" else { continue }
 
-        if type == "user" {
-            // Extract user text
-            if let msg = obj["message"] as? [String: Any],
-               let content = msg["content"] as? [[String: Any]] {
-                for c in content {
-                    if c["type"] as? String == "text", let txt = c["text"] as? String, !txt.isEmpty {
-                        lastUserText = txt
-                        break
-                    }
+        let rid = obj["requestId"] as? String ?? ""
+        let msg = obj["message"] as? [String: Any] ?? [:]
+        let tsField = obj["timestamp"] as? String ?? ""
+        let evTs = parseDate(tsField)
+        let hasUsage = (msg["usage"] as? [String: Any]) != nil
+
+        // Extract first text block from content array
+        var txt = ""
+        if let content = msg["content"] as? [[String: Any]] {
+            for c in content {
+                if c["type"] as? String == "text", let s = c["text"] as? String, !s.isEmpty {
+                    txt = s; break
                 }
             }
-        } else if type == "assistant" {
-            let rid = obj["requestId"] as? String ?? ""
-            let msg = obj["message"] as? [String: Any] ?? [:]
-            // Collect text content chunks
-            if let content = msg["content"] as? [[String: Any]] {
-                for c in content {
-                    if c["type"] as? String == "text", let txt = c["text"] as? String, !txt.isEmpty {
-                        assistantChunks[rid, default: []].append(txt)
-                    }
-                }
-            }
-            // Record timestamp when we see usage (final chunk for this request)
-            if (msg["usage"] as? [String: Any]) != nil,
-               let tsField = obj["timestamp"] as? String,
-               let d = parseDate(tsField) {
-                assistantTs[rid] = d
-                // Check proximity to target
-                if let td = targetDate {
-                    let diff = abs(d.timeIntervalSince(td))
-                    if diff < bestDiff { bestDiff = diff; candidateRid = rid }
-                }
-            }
+        } else if let s = msg["content"] as? String, !s.isEmpty {
+            txt = s
+        }
+
+        events.append(Event(idx: idx, type: type, rid: rid, ts: evTs, text: txt, hasUsage: hasUsage))
+    }
+
+    // Find the assistant event (with usage) whose timestamp is closest to targetDate
+    var candidateRid = ""
+    var candidateIdx = -1
+    var bestDiff = Double.infinity
+
+    for ev in events where ev.type == "assistant" && ev.hasUsage {
+        if let td = targetDate, let evTs = ev.ts {
+            let diff = abs(evTs.timeIntervalSince(td))
+            if diff < bestDiff { bestDiff = diff; candidateRid = ev.rid; candidateIdx = ev.idx }
+        } else if candidateRid.isEmpty {
+            candidateRid = ev.rid; candidateIdx = ev.idx
         }
     }
 
-    // If no target date, fall back to last assistant entry
-    if candidateRid.isEmpty { candidateRid = assistantTs.keys.sorted().last ?? "" }
+    // Collect ALL text chunks for that requestId (streaming is split across many events)
+    let assistantText = events
+        .filter { $0.type == "assistant" && $0.rid == candidateRid && !$0.text.isEmpty }
+        .map { $0.text }
+        .joined()
 
-    let assistantText = assistantChunks[candidateRid]?.joined() ?? ""
+    // Walk backwards from the matched assistant event to find the last real user message
+    let lastUserText = events
+        .filter { $0.type == "user" && $0.idx < candidateIdx && !$0.text.isEmpty }
+        .last?.text ?? ""
 
     // Build trimmed snippets
     let maxLen = 800
