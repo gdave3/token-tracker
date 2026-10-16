@@ -4,6 +4,10 @@ swift_build/*.app
 swift_build/token-dashboard.html
 swift_build/plugin_live.py
 swift_build/"Token Tracker"
+MacTokenTracker/Token Tracker
+MacTokenTracker/*.app
+WinTokenTracker/bin/
+WinTokenTracker/obj/
 usage_log.json
 __pycache__/
 *.pyc
