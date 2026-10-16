@@ -1,0 +1,136 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ── macOS ──────────────────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile Swift app
+        working-directory: MacTokenTracker
+        run: |
+          swiftc main.swift \
+            -framework Cocoa \
+            -framework WebKit \
+            -framework Network \
+            -O \
+            -o "Token Tracker"
+
+      - name: Bundle .app
+        working-directory: MacTokenTracker
+        run: |
+          APP="TokenTracker.app"
+          rm -rf "$APP"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          cp "Token Tracker" "$APP/Contents/MacOS/Token Tracker"
+          cp token-dashboard.html "$APP/Contents/Resources/token-dashboard.html"
+
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key><string>Token Tracker</string>
+              <key>CFBundleDisplayName</key><string>Token Tracker</string>
+              <key>CFBundleIdentifier</key><string>com.tokentracker.app</string>
+              <key>CFBundleVersion</key><string>1.0</string>
+              <key>CFBundleExecutable</key><string>Token Tracker</string>
+              <key>LSUIElement</key><true/>
+              <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Ad-hoc sign so Gatekeeper lets it run without extra steps
+          codesign --deep --force --sign - "$APP"
+
+      - name: Create DMG
+        working-directory: MacTokenTracker
+        run: |
+          hdiutil create \
+            -volname "Token Tracker" \
+            -srcfolder TokenTracker.app \
+            -ov -format UDZO \
+            TokenTracker-mac.dmg
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg
+          path: MacTokenTracker/TokenTracker-mac.dmg
+
+  # ── Windows ────────────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish single-file exe
+        working-directory: WinTokenTracker
+        run: |
+          dotnet publish `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o publish
+
+      - name: Copy dashboard into publish folder
+        working-directory: WinTokenTracker
+        run: Copy-Item token-dashboard.html publish\token-dashboard.html
+
+      - name: Zip release
+        working-directory: WinTokenTracker
+        run: Compress-Archive -Path publish\* -DestinationPath TokenTracker-windows.zip
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: WinTokenTracker/TokenTracker-windows.zip
+
+  # ── GitHub Release ─────────────────────────────────────────────────────────
+  release:
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Token Tracker ${{ github.ref_name }}"
+          body: |
+            ## Install
+
+            **macOS** — Download `TokenTracker-mac.dmg`, open it, drag **Token Tracker** to Applications.
+            > First launch: right-click → Open if macOS blocks the unsigned app.
+
+            **Windows** — Download `TokenTracker-windows.zip`, extract it, run `TokenTracker.exe`.
+            > Requires Windows 10/11 with WebView2 (ships with Edge — already on most machines).
+          files: |
+            TokenTracker-mac.dmg
+            TokenTracker-windows.zip
+          draft: false
+          prerelease: false
