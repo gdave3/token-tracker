@@ -20,6 +20,16 @@ class AutoUpdater {
         DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 6) {
             self.checkForUpdate()
         }
+        // Re-check every 4 hours for long-running sessions
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+            Timer.scheduledTimer(withTimeInterval: 4 * 3600, repeats: true) { _ in
+                DispatchQueue.global(qos: .background).async { self.checkForUpdate() }
+            }
+        }
+    }
+
+    func checkNow() {
+        DispatchQueue.global(qos: .background).async { self.checkForUpdate() }
     }
 
     private func checkForUpdate() {
@@ -520,6 +530,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Open Dashboard", action: #selector(openDashboard), keyEquivalent: "d"))
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u"))
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Open Log File", action: #selector(openLog), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Token Tracker", action: #selector(quit), keyEquivalent: "q"))
@@ -589,6 +601,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDe
     }
 
     @objc func openLog() { NSWorkspace.shared.open(logFilePath) }
+
+    @objc func checkForUpdates() { AutoUpdater.shared.checkNow() }
 
     @objc func quit() { NSApp.terminate(nil) }
 
