@@ -1,6 +1,144 @@
 import Cocoa
 import WebKit
 
+// ── Version & update config ───────────────────────────────────────────────────
+let kAppVersion = "1.0.4"
+let kGitHubRepo = "gdave3/token-tracker"
+
+// ── Auto Updater ──────────────────────────────────────────────────────────────
+class AutoUpdater {
+    static let shared = AutoUpdater()
+
+    func checkOnStartup() {
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 6) {
+            self.checkForUpdate()
+        }
+    }
+
+    private func checkForUpdate() {
+        guard let url = URL(string: "https://api.github.com/repos/\(kGitHubRepo)/releases/latest") else { return }
+        var req = URLRequest(url: url)
+        req.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        req.timeoutInterval = 10
+        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+            guard let self,
+                  let data,
+                  let json  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tag   = json["tag_name"] as? String else { return }
+            let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+            guard self.isNewer(latest, than: kAppVersion) else { return }
+            let assets = json["assets"] as? [[String: Any]] ?? []
+            guard let dmg = assets.first(where: { ($0["name"] as? String)?.hasSuffix(".dmg") == true }),
+                  let dlStr = dmg["browser_download_url"] as? String,
+                  let dlURL = URL(string: dlStr) else { return }
+            self.download(version: latest, from: dlURL)
+        }.resume()
+    }
+
+    private func isNewer(_ a: String, than b: String) -> Bool {
+        let av = a.split(separator: ".").compactMap { Int($0) }
+        let bv = b.split(separator: ".").compactMap { Int($0) }
+        for i in 0..<max(av.count, bv.count) {
+            let ai = i < av.count ? av[i] : 0
+            let bi = i < bv.count ? bv[i] : 0
+            if ai != bi { return ai > bi }
+        }
+        return false
+    }
+
+    private func download(version: String, from url: URL) {
+        let dest = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("TokenTracker-\(version).dmg")
+        if FileManager.default.fileExists(atPath: dest.path) {
+            DispatchQueue.main.async { self.promptInstall(version: version, dmg: dest) }
+            return
+        }
+        URLSession.shared.downloadTask(with: url) { tmp, _, err in
+            guard let tmp, err == nil else { return }
+            try? FileManager.default.removeItem(at: dest)
+            try? FileManager.default.moveItem(at: tmp, to: dest)
+            DispatchQueue.main.async { self.promptInstall(version: version, dmg: dest) }
+        }.resume()
+    }
+
+    private func promptInstall(version: String, dmg: URL) {
+        let alert = NSAlert()
+        alert.messageText = "Token Tracker \(version) ready"
+        alert.informativeText = "A new version was downloaded. Install it now and restart?"
+        alert.addButton(withTitle: "Install & Restart")
+        alert.addButton(withTitle: "Later")
+        alert.alertStyle = .informational
+        if alert.runModal() == .alertFirstButtonReturn {
+            install(version: version, dmg: dmg)
+        }
+    }
+
+    private func install(version: String, dmg: URL) {
+        // Mount DMG and capture plist output to find the mount point
+        let hdi = Process(); let pipe = Pipe()
+        hdi.executableURL = URL(fileURLWithPath: "/usr/bin/hdiutil")
+        hdi.arguments = ["attach", dmg.path, "-nobrowse", "-quiet", "-plist"]
+        hdi.standardOutput = pipe
+        hdi.standardError  = FileHandle.nullDevice
+        try? hdi.run(); hdi.waitUntilExit()
+
+        let plistData = pipe.fileHandleForReading.readDataToEndOfFile()
+        var mountPoint: String?
+        if let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any],
+           let entities = plist["system-entities"] as? [[String: Any]] {
+            mountPoint = entities.compactMap { $0["mount-point"] as? String }.first
+        }
+        // Fallback: scan /Volumes
+        if mountPoint == nil {
+            mountPoint = (try? FileManager.default.contentsOfDirectory(atPath: "/Volumes"))?
+                .first(where: { $0.lowercased().contains("token") })
+                .map { "/Volumes/\($0)" }
+        }
+        guard let vol = mountPoint else { openFallback(dmg); return }
+
+        // Find the .app inside the volume
+        guard let appName = (try? FileManager.default.contentsOfDirectory(atPath: vol))?
+                .first(where: { $0.hasSuffix(".app") }) else {
+            detach(vol); openFallback(dmg); return
+        }
+        let srcApp = "\(vol)/\(appName)"
+
+        // Destination: the current running .app bundle
+        let destApp = Bundle.main.bundlePath
+
+        // Replace with ditto, strip quarantine, re-sign
+        run("/bin/rm",          ["-rf", destApp])
+        run("/usr/bin/ditto",   [srcApp, destApp])
+        run("/usr/bin/xattr",   ["-cr", destApp])
+        run("/usr/bin/codesign",["--deep", "--force", "--sign", "-", destApp])
+        detach(vol)
+
+        // Relaunch after 1 s then quit
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", "sleep 1 && open '\(destApp)'"]
+        try? p.run()
+        NSApp.terminate(nil)
+    }
+
+    private func run(_ path: String, _ args: [String]) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: path)
+        p.arguments = args
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError  = FileHandle.nullDevice
+        try? p.run(); p.waitUntilExit()
+    }
+
+    private func detach(_ mountPoint: String) {
+        run("/usr/bin/hdiutil", ["detach", mountPoint, "-quiet"])
+    }
+
+    private func openFallback(_ dmg: URL) {
+        DispatchQueue.main.async { NSWorkspace.shared.open(dmg) }
+    }
+}
+
 // ── Data path ────────────────────────────────────────────────────────────────
 let logFile = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Application Support/TokenTracker/usage_log.json")
@@ -22,7 +160,7 @@ func todayTokens() -> Int {
 }
 
 // ── App Delegate ─────────────────────────────────────────────────────────────
-class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
 
     var statusItem: NSStatusItem!
     var window: NSWindow?
@@ -35,6 +173,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
         startPythonServer()
         buildStatusItem()
+        AutoUpdater.shared.checkOnStartup()
 
         // Open dashboard after server warms up
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { self.openDashboard() }
@@ -97,6 +236,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
         let wv = WKWebView(frame: rect)
         wv.navigationDelegate = self
+        wv.uiDelegate = self
         if let url = URL(string: "http://localhost:8765") {
             wv.load(URLRequest(url: url))
         }
@@ -106,6 +246,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
         window  = w
         webView = wv
+    }
+
+    // Open external https:// links in Safari instead of inside WKWebView
+    func webView(_ webView: WKWebView,
+                 decidePolicyFor action: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        if action.navigationType == .linkActivated,
+           let url = action.request.url,
+           (url.scheme == "https" || url.scheme == "http"),
+           url.host != "localhost" {
+            NSWorkspace.shared.open(url)
+            decisionHandler(.cancel)
+        } else {
+            decisionHandler(.allow)
+        }
+    }
+
+    // Handle target="_blank" links
+    func webView(_ webView: WKWebView,
+                 createWebViewWith configuration: WKWebViewConfiguration,
+                 for action: WKNavigationAction,
+                 windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if let url = action.request.url { NSWorkspace.shared.open(url) }
+        return nil
     }
 
     @objc func openLog() {
