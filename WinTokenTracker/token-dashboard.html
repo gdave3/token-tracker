@@ -1,71 +1,70 @@
 <title>Token Tracker</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-
+/* ── Design tokens ── */
 :root {
-  --bg:        #0d1117;
-  --bg-card:   #161b22;
-  --bg-input:  #1c2128;
-  --border:    #30363d;
-  --border-hi: #58a6ff;
-  --fg:        #c9d1d9;
-  --fg-dim:    #8b949e;
-  --fg-head:   #f0f6fc;
-  --accent:    #58a6ff;
-  --green:     #3fb950;
-  --yellow:    #d29922;
-  --red:       #f85149;
-  --hm0:       #161b22;
-  --hm1:       #0e4429;
-  --hm2:       #006d32;
-  --hm3:       #26a641;
-  --hm4:       #39d353;
-  --mono:      'IBM Plex Mono', 'Fira Code', monospace;
-  --sans:      'IBM Plex Sans', system-ui, sans-serif;
+  --bg:        #0C0C0D;
+  --bg-card:   #161617;
+  --bg-input:  #1E1E20;
+  --bg-hover:  rgba(255,255,255,0.04);
+  --border:    rgba(255,255,255,0.08);
+  --border-hi: #D97757;
+  --fg:        #E8E6E3;
+  --fg-dim:    rgba(232,230,227,0.48);
+  --fg-head:   #F5F3F0;
+  --accent:    #D97757;
+  --accent-lo: rgba(217,119,87,0.12);
+  --green:     #3DD68C;
+  --yellow:    #F5A524;
+  --red:       #F87171;
+  --hm0:       rgba(255,255,255,0.04);
+  --hm1:       rgba(217,119,87,0.20);
+  --hm2:       rgba(217,119,87,0.45);
+  --hm3:       rgba(217,119,87,0.72);
+  --hm4:       #D97757;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code', monospace;
+  --sans: 'Inter', system-ui, sans-serif;
+  --radius: 10px;
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg:        #ffffff;
-    --bg-card:   #f6f8fa;
-    --bg-input:  #ffffff;
-    --border:    #d0d7de;
-    --border-hi: #0969da;
-    --fg:        #24292f;
-    --fg-dim:    #57606a;
-    --fg-head:   #1f2328;
-    --accent:    #0969da;
-    --green:     #1a7f37;
-    --yellow:    #9a6700;
-    --red:       #cf222e;
-    --hm0:       #ebedf0;
-    --hm1:       #9be9a8;
-    --hm2:       #40c463;
-    --hm3:       #30a14e;
-    --hm4:       #216e39;
+    --bg:        #F7F5F2;
+    --bg-card:   #FFFFFF;
+    --bg-input:  #FAFAFA;
+    --bg-hover:  rgba(0,0,0,0.03);
+    --border:    rgba(0,0,0,0.09);
+    --fg:        #1A1917;
+    --fg-dim:    rgba(26,25,23,0.46);
+    --fg-head:   #0C0B09;
+    --accent:    #C4623E;
+    --accent-lo: rgba(196,98,62,0.10);
+    --hm0:       rgba(0,0,0,0.05);
+    --hm1:       rgba(196,98,62,0.18);
+    --hm2:       rgba(196,98,62,0.42);
+    --hm3:       rgba(196,98,62,0.68);
+    --hm4:       #C4623E;
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --bg:        #ffffff;
-  --bg-card:   #f6f8fa;
-  --bg-input:  #ffffff;
-  --border:    #d0d7de;
-  --border-hi: #0969da;
-  --fg:        #24292f;
-  --fg-dim:    #57606a;
-  --fg-head:   #1f2328;
-  --accent:    #0969da;
-  --green:     #1a7f37;
-  --yellow:    #9a6700;
-  --red:       #cf222e;
-  --hm0:       #ebedf0;
-  --hm1:       #9be9a8;
-  --hm2:       #40c463;
-  --hm3:       #30a14e;
-  --hm4:       #216e39;
+  --bg:        #F7F5F2;
+  --bg-card:   #FFFFFF;
+  --bg-input:  #FAFAFA;
+  --bg-hover:  rgba(0,0,0,0.03);
+  --border:    rgba(0,0,0,0.09);
+  --fg:        #1A1917;
+  --fg-dim:    rgba(26,25,23,0.46);
+  --fg-head:   #0C0B09;
+  --accent:    #C4623E;
+  --accent-lo: rgba(196,98,62,0.10);
+  --hm0:       rgba(0,0,0,0.05);
+  --hm1:       rgba(196,98,62,0.18);
+  --hm2:       rgba(196,98,62,0.42);
+  --hm3:       rgba(196,98,62,0.68);
+  --hm4:       #C4623E;
   color-scheme: light;
 }
 :root[data-theme="dark"] { color-scheme: dark; }
@@ -85,13 +84,27 @@ body {
   padding-block: 0;
 }
 
+/* ── Update banner ── */
+#updateBanner {
+  display: none;
+  background: linear-gradient(135deg, rgba(217,119,87,0.15), rgba(217,119,87,0.05));
+  border-bottom: 1px solid rgba(217,119,87,0.25);
+  padding: 10px max(16px, env(safe-area-inset-left, 0px));
+  font-size: 13px;
+  animation: slideDown .35s ease;
+}
+@keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+#updateBanner .banner-inner { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+#updateBanner strong { color: var(--accent); }
+#updateBanner a { color: var(--accent); text-decoration:none; font-weight:500; border-bottom: 1px solid rgba(217,119,87,0.4); }
+
 /* ── Header ── */
 header {
   position: sticky;
   top: env(safe-area-inset-top, 0px);
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  padding: 12px 0;
+  padding: 11px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -99,87 +112,153 @@ header {
   z-index: 10;
 }
 .logo {
-  display: flex; align-items: center; gap: 10px;
-  font-family: var(--mono); font-weight: 600; font-size: 15px; color: var(--fg-head);
+  display: flex; align-items: center; gap: 11px;
+  font-family: var(--mono); font-weight: 600; font-size: 14px; color: var(--fg-head);
+  letter-spacing: -0.02em;
 }
+
+/* ── Orbital logo ── */
 .logo-mark {
-  width: 28px; height: 28px; border-radius: 6px; background: var(--accent);
-  display: grid; place-items: center; font-size: 14px; color: #fff; flex-shrink: 0;
+  width: 28px; height: 28px; flex-shrink: 0;
+  position: relative; display: grid; place-items: center;
 }
-.header-actions { display: flex; gap: 8px; }
+.logo-mark svg { position: absolute; inset: 0; }
+.orbit-ring {
+  transform-origin: center;
+  animation: orbit 4s linear infinite;
+}
+@keyframes orbit { to { transform: rotate(360deg); } }
+.logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); position: relative; z-index: 1;
+}
+
+.header-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ── Live status ── */
+.live-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-family: var(--mono); color: var(--fg-dim);
+  letter-spacing: 0.02em;
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--fg-dim); flex-shrink: 0;
+  transition: background .4s;
+}
+.live-dot.on {
+  background: var(--green);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(61,214,140,0.5); }
+  50% { box-shadow: 0 0 0 5px rgba(61,214,140,0); }
+}
+
 button {
   font-family: var(--sans); font-size: 13px; cursor: pointer;
-  border-radius: 6px; border: 1px solid var(--border);
+  border-radius: 7px; border: 1px solid var(--border);
   background: var(--bg-card); color: var(--fg);
-  padding: 5px 12px; transition: border-color .15s, background .15s;
+  padding: 5px 12px; transition: border-color .15s, background .15s, opacity .15s;
 }
-button:hover { border-color: var(--border-hi); }
+button:hover { border-color: rgba(255,255,255,0.18); background: var(--bg-hover); }
 button.primary { background: var(--accent); color: #fff; border-color: transparent; }
-button.primary:hover { opacity: .88; }
+button.primary:hover { opacity: .86; }
 
 /* ── Tabs ── */
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding-top: 12px; }
-.tab {
-  padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--fg-dim);
-  border: none; background: none; border-bottom: 2px solid transparent;
-  border-radius: 0; cursor: pointer; transition: color .15s, border-color .15s;
-  margin-bottom: -1px;
+.tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  padding-top: 10px; overflow-x: auto;
 }
-.tab:hover { color: var(--fg); border-color: transparent; }
+.tab {
+  padding: 7px 15px; font-size: 13px; font-weight: 500; color: var(--fg-dim);
+  border: none; background: none; border-bottom: 2px solid transparent;
+  border-radius: 0; cursor: pointer;
+  transition: color .15s, border-color .15s;
+  margin-bottom: -1px; white-space: nowrap;
+}
+.tab:hover { color: var(--fg); }
 .tab.active { color: var(--fg-head); border-bottom-color: var(--accent); }
 
 /* ── Panels ── */
 .panel { display: none; padding-block: 20px; }
-.panel.active { display: block; }
+.panel.active { display: block; animation: fadePanel .18s ease; }
+@keyframes fadePanel { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-/* ── Stats tiles ── */
+/* ── Section heading ── */
+.section-heading {
+  font-size: 11px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--fg-dim); margin-bottom: 14px;
+}
+
+/* ── Stat tiles ── */
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px; margin-bottom: 24px;
+  gap: 10px; margin-bottom: 20px;
 }
 .tile {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  opacity: 0;
+  animation: tileIn .4s ease forwards;
+}
+.tile:nth-child(1) { animation-delay: 0ms; }
+.tile:nth-child(2) { animation-delay: 55ms; }
+.tile:nth-child(3) { animation-delay: 110ms; }
+.tile:nth-child(4) { animation-delay: 165ms; }
+@keyframes tileIn {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
 }
 .tile-label {
-  font-size: 11px; font-weight: 500; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--fg-dim); margin-bottom: 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--fg-dim); margin-bottom: 7px;
 }
 .tile-value {
   font-family: var(--mono); font-size: 22px; font-weight: 600;
   color: var(--fg-head); font-variant-numeric: tabular-nums;
+  transition: color .2s;
 }
-.tile-sub { font-size: 11px; color: var(--fg-dim); margin-top: 3px; }
+.tile-sub { font-size: 11px; color: var(--fg-dim); margin-top: 3px; font-family: var(--mono); }
 
 /* ── Token limit bar ── */
 .limit-section {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px;
 }
 .limit-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px; gap: 12px; flex-wrap: wrap;
 }
-.limit-title { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-dim); }
-.limit-right { display: flex; align-items: center; gap: 8px; }
-.limit-pct { font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--fg-head); }
-.limit-pct.warn { color: var(--yellow); }
+.limit-title {
+  font-size: 10px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--fg-dim);
+}
+.limit-pct {
+  font-family: var(--mono); font-size: 18px; font-weight: 600;
+  color: var(--fg-head); font-variant-numeric: tabular-nums;
+  transition: color .3s;
+}
+.limit-pct.warn  { color: var(--yellow); }
 .limit-pct.danger { color: var(--red); }
 .limit-track {
-  height: 8px; background: var(--border); border-radius: 4px;
+  height: 6px; background: var(--border); border-radius: 3px;
   overflow: hidden; margin-bottom: 8px;
 }
 .limit-fill {
-  height: 100%; border-radius: 4px;
+  height: 100%; border-radius: 3px;
   background: var(--green);
-  transition: width .4s ease, background .3s;
+  width: 0%;
+  transition: width .7s cubic-bezier(.23,1,.32,1), background .3s;
 }
-.limit-fill.warn { background: var(--yellow); }
+.limit-fill.warn   { background: var(--yellow); }
 .limit-fill.danger { background: var(--red); }
 .limit-meta {
   display: flex; justify-content: space-between;
   font-size: 11px; color: var(--fg-dim); font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 .limit-input-row {
   display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;
@@ -187,73 +266,85 @@ button.primary:hover { opacity: .88; }
 .limit-input-row label { font-size: 11px; color: var(--fg-dim); white-space: nowrap; }
 .limit-input-row input {
   width: 100px; background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: 4px; color: var(--fg); font-family: var(--mono);
+  border-radius: 5px; color: var(--fg); font-family: var(--mono);
   font-size: 12px; padding: 4px 8px;
 }
 .limit-input-row input:focus { outline: none; border-color: var(--border-hi); }
+.preset-btn {
+  padding: 4px 9px !important; font-size: 11px !important;
+  border-radius: 6px !important;
+}
+.preset-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 
 /* ── Heatmaps ── */
 .heatmap-section { margin-bottom: 24px; }
 
-/* Daily heatmap (GitHub style) */
 .hm-daily-wrap {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 16px; overflow-x: auto; margin-bottom: 12px;
+  border-radius: var(--radius); padding: 16px; overflow-x: auto; margin-bottom: 12px;
 }
 .hm-daily-inner { display: flex; gap: 3px; align-items: flex-start; }
 .hm-day-labels {
   display: flex; flex-direction: column; gap: 3px;
   margin-top: 20px; margin-right: 4px; flex-shrink: 0;
 }
-.hm-day-label { font-size: 9px; color: var(--fg-dim); height: 13px; line-height: 13px; width: 12px; }
-.hm-weeks { display: flex; gap: 3px; }
-.hm-week { display: flex; flex-direction: column; gap: 3px; }
+.hm-day-label  { font-size: 9px; color: var(--fg-dim); height: 13px; line-height: 13px; width: 12px; }
+.hm-weeks      { display: flex; gap: 3px; }
+.hm-week       { display: flex; flex-direction: column; gap: 3px; }
 .hm-month-labels { display: flex; gap: 3px; margin-bottom: 4px; }
-.hm-month-label { font-size: 9px; color: var(--fg-dim); min-width: 13px; }
+.hm-month-label  { font-size: 9px; color: var(--fg-dim); min-width: 13px; }
 .hm-cell {
-  width: 13px; height: 13px; border-radius: 2px;
-  background: var(--hm0); cursor: default; transition: opacity .1s;
+  width: 13px; height: 13px; border-radius: 3px;
+  background: var(--hm0); cursor: default;
+  transition: opacity .1s, transform .1s;
 }
-.hm-cell:hover { opacity: .8; }
+.hm-cell:hover { opacity: .75; transform: scale(1.2); }
 .hm-cell[data-l="1"] { background: var(--hm1); }
 .hm-cell[data-l="2"] { background: var(--hm2); }
 .hm-cell[data-l="3"] { background: var(--hm3); }
 .hm-cell[data-l="4"] { background: var(--hm4); }
 
-/* Hourly heatmap */
 .hm-hourly-wrap {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 16px; overflow-x: auto;
+  border-radius: var(--radius); padding: 16px; overflow-x: auto;
 }
 .hm-hourly-inner { min-width: 420px; }
-.hm-hour-row {
-  display: flex; gap: 3px; align-items: center; margin-bottom: 3px;
-}
+.hm-hour-row { display: flex; gap: 3px; align-items: center; margin-bottom: 3px; }
 .hm-hour-label {
   font-size: 10px; color: var(--fg-dim); font-family: var(--mono);
   width: 70px; flex-shrink: 0; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .hm-hour-cells { display: flex; gap: 2px; }
 .hm-h-cell {
   width: 11px; height: 11px; border-radius: 2px;
   background: var(--hm0); flex-shrink: 0;
   cursor: default; position: relative;
+  transition: transform .1s;
 }
+.hm-h-cell:hover { transform: scale(1.3); }
 .hm-h-cell:hover::after {
   content: attr(data-tip);
-  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 4px; padding: 3px 6px;
+  border-radius: 5px; padding: 4px 8px;
   font-size: 10px; font-family: var(--mono); color: var(--fg);
   white-space: nowrap; pointer-events: none; z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
 }
 .hm-h-cell[data-l="1"] { background: var(--hm1); }
 .hm-h-cell[data-l="2"] { background: var(--hm2); }
 .hm-h-cell[data-l="3"] { background: var(--hm3); }
 .hm-h-cell[data-l="4"] { background: var(--hm4); }
 .hm-hour-axis { display: flex; gap: 2px; margin-bottom: 4px; padding-left: 74px; }
-.hm-ha-label { font-size: 9px; color: var(--fg-dim); font-family: var(--mono); width: 11px; text-align: center; }
-.hm-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 10px; color: var(--fg-dim); }
+.hm-ha-label {
+  font-size: 9px; color: var(--fg-dim); font-family: var(--mono);
+  width: 11px; text-align: center;
+}
+.hm-legend {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 10px; font-size: 10px; color: var(--fg-dim);
+}
 .hm-legend-cell { width: 11px; height: 11px; border-radius: 2px; }
 
 /* ── Log table ── */
@@ -261,10 +352,11 @@ button.primary:hover { opacity: .88; }
 table {
   width: 100%; border-collapse: collapse;
   font-size: 13px; font-family: var(--mono); min-width: 560px;
+  font-variant-numeric: tabular-nums;
 }
 th {
   text-align: left; padding: 8px 10px;
-  font-size: 11px; font-weight: 500; letter-spacing: .04em;
+  font-size: 10px; font-weight: 600; letter-spacing: .06em;
   text-transform: uppercase; color: var(--fg-dim);
   border-bottom: 1px solid var(--border); white-space: nowrap;
 }
@@ -273,10 +365,11 @@ td {
   color: var(--fg); vertical-align: middle; white-space: nowrap;
 }
 tr:last-child td { border-bottom: none; }
-tr:hover td { background: var(--bg-card); }
+tr:hover td { background: var(--bg-hover); }
 .model-badge {
-  display: inline-block; font-size: 11px; padding: 2px 7px;
+  display: inline-block; font-size: 11px; padding: 2px 8px;
   border-radius: 20px; border: 1px solid var(--border); color: var(--fg-dim);
+  font-family: var(--mono);
 }
 .cost-cell { color: var(--green); }
 .num { text-align: right; }
@@ -288,30 +381,26 @@ tr:hover td { background: var(--bg-card); }
 .empty-code {
   display: inline-block; font-family: var(--mono); font-size: 12px;
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 6px; padding: 10px 16px; text-align: left; color: var(--fg);
+  border-radius: 8px; padding: 12px 18px; text-align: left; color: var(--fg);
   white-space: pre; margin-top: 8px;
 }
 
 /* ── Import area ── */
 .import-area {
   background: var(--bg-card); border: 1px dashed var(--border);
-  border-radius: 8px; padding: 16px; margin-bottom: 20px;
+  border-radius: var(--radius); padding: 16px; margin-bottom: 20px;
   transition: border-color .2s, background .2s;
 }
 .import-area.drag-over {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
-}
-.drop-hint {
-  text-align: center; padding: 20px;
-  font-size: 13px; color: var(--fg-dim); pointer-events: none;
+  background: var(--accent-lo);
 }
 .import-area summary { cursor: pointer; font-size: 13px; color: var(--fg-dim); user-select: none; }
 .import-area summary:hover { color: var(--fg); }
 .import-area textarea {
   display: block; width: 100%; margin-top: 12px; min-height: 90px;
   background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: 6px; color: var(--fg); font-family: var(--mono);
+  border-radius: 7px; color: var(--fg); font-family: var(--mono);
   font-size: 12px; padding: 10px; resize: vertical;
 }
 .import-area textarea:focus { outline: none; border-color: var(--border-hi); }
@@ -328,32 +417,32 @@ tr:hover td { background: var(--bg-card); }
 }
 .field input, .field select {
   width: 100%; background: var(--bg-input); border: 1px solid var(--border);
-  border-radius: 6px; color: var(--fg); font-family: var(--mono);
+  border-radius: 7px; color: var(--fg); font-family: var(--mono);
   font-size: 14px; padding: 8px 10px; transition: border-color .15s;
 }
 .field input:focus, .field select:focus { outline: none; border-color: var(--border-hi); }
 .calc-result {
   margin-top: 20px; background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 16px 20px; max-width: 640px;
+  border-radius: var(--radius); padding: 16px 20px; max-width: 640px;
 }
 .calc-result-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px 24px; font-family: var(--mono); font-variant-numeric: tabular-nums;
 }
-.cr-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-dim); }
-.cr-val { font-size: 18px; font-weight: 600; color: var(--fg-head); margin-top: 2px; }
+.cr-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-dim); font-weight: 600; }
+.cr-val { font-size: 18px; font-weight: 600; color: var(--fg-head); margin-top: 3px; }
 .cr-val.green { color: var(--green); }
 
 /* ── Prices table ── */
-.prices-table { max-width: 580px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.prices-table { max-width: 580px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .prices-table table { min-width: 0; font-size: 13px; }
 .prices-table th, .prices-table td { padding: 9px 14px; }
 .prices-table th { background: var(--bg-card); }
 .prices-table td:not(:first-child) { text-align: right; color: var(--fg-dim); font-family: var(--mono); }
-.default-row td { color: var(--fg-head) !important; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.default-row td { color: var(--fg-head) !important; background: var(--accent-lo); }
 .default-tag {
-  display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 10px;
-  background: var(--accent); color: #fff; margin-left: 6px; vertical-align: middle; font-weight: 500;
+  display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 10px;
+  background: var(--accent); color: #fff; margin-left: 6px; vertical-align: middle; font-weight: 600;
 }
 
 /* ── CLI reference ── */
@@ -361,7 +450,7 @@ tr:hover td { background: var(--bg-card); }
 .cli-section h3 { font-size: 13px; font-weight: 600; color: var(--fg-head); margin: 20px 0 8px; }
 .cli-section h3:first-child { margin-top: 0; }
 pre {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
   padding: 12px 14px; font-family: var(--mono); font-size: 12.5px;
   overflow-x: auto; margin: 0; color: var(--fg); line-height: 1.6;
 }
@@ -369,16 +458,10 @@ pre {
 .cmd-flag { color: var(--yellow); }
 .cmd-comment { color: var(--fg-dim); }
 
-/* ── Section heading ── */
-.section-heading {
-  font-size: 12px; font-weight: 500; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--fg-dim); margin-bottom: 14px;
-}
-
 /* ── Chart ── */
 .chart-wrap {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 16px; margin-bottom: 20px;
+  border-radius: var(--radius); padding: 16px; margin-bottom: 20px;
 }
 canvas { display: block; max-width: 100%; }
 
@@ -391,20 +474,50 @@ canvas { display: block; max-width: 100%; }
 }
 .breakdown-list li:last-child { border-bottom: none; }
 .b-model { font-family: var(--mono); font-size: 12px; color: var(--fg-dim); }
-.b-tok { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); }
-.b-cost { font-family: var(--mono); color: var(--green); font-variant-numeric: tabular-nums; }
-.bar-track { grid-column: 1/-1; height: 3px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: -6px; }
-.bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s ease; }
+.b-tok   { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); }
+.b-cost  { font-family: var(--mono); color: var(--green); font-variant-numeric: tabular-nums; }
+.bar-track {
+  grid-column: 1/-1; height: 3px; background: var(--border);
+  border-radius: 3px; overflow: hidden; margin-top: -4px;
+}
+.bar-fill {
+  height: 100%; background: var(--accent); border-radius: 3px;
+  width: 0%; transition: width .8s cubic-bezier(.23,1,.32,1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-ring, .live-dot, .tile, .bar-fill, .limit-fill { animation: none !important; transition: none !important; }
+  .tile { opacity: 1 !important; }
+  .bar-fill, .limit-fill { transition: none !important; }
+}
 </style>
+
+<!-- ── Update banner (injected by JS) ── -->
+<div id="updateBanner"></div>
 
 <header>
   <div class="logo">
-    <div class="logo-mark">T</div>
+    <!-- Orbital logo mark -->
+    <div class="logo-mark">
+      <svg viewBox="0 0 28 28" width="28" height="28" fill="none">
+        <!-- Outer ring (rotating arc) -->
+        <g class="orbit-ring">
+          <circle cx="14" cy="14" r="11" stroke="rgba(217,119,87,0.22)" stroke-width="1.5" fill="none"/>
+          <path d="M14 3 A11 11 0 0 1 25 14" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        </g>
+        <!-- Inner static ring -->
+        <circle cx="14" cy="14" r="6.5" stroke="rgba(217,119,87,0.30)" stroke-width="1" fill="none"/>
+      </svg>
+      <div class="logo-dot"></div>
+    </div>
     Token Tracker
   </div>
   <div class="header-actions">
-    <span id="liveStatus" style="font-size:11px;font-family:var(--mono);color:var(--fg-dim)">⬤ offline</span>
-    <button id="themeBtn" title="Toggle theme">☀/☾</button>
+    <div class="live-status">
+      <div class="live-dot" id="liveDot"></div>
+      <span id="liveLabel">offline</span>
+    </div>
+    <button id="themeBtn" title="Toggle theme" style="padding:5px 9px;font-size:12px">◑</button>
   </div>
 </header>
 
@@ -418,10 +531,12 @@ canvas { display: block; max-width: 100%; }
 <!-- ── LOG PANEL ── -->
 <div class="panel active" id="panel-log">
 
-  <details class="import-area" id="importDetails" id="dropZone">
+  <details class="import-area" id="importDetails">
     <summary>Paste or drop <code>usage_log.json</code> to visualize →</summary>
-    <div class="drop-hint" id="dropHint">📂 Drop <strong>usage_log.json</strong> anywhere on this box</div>
-    <textarea id="logPaste" placeholder='{"version":1,"entries":[...],"totals":{...}}'></textarea>
+    <div style="text-align:center;padding:20px;font-size:13px;color:var(--fg-dim);pointer-events:none" id="dropHint">
+      📂 Drop <strong>usage_log.json</strong> anywhere on this box
+    </div>
+    <textarea id="logPaste" placeholder='{"version":1,"entries":[...],"totals":{}}'></textarea>
     <div class="import-row">
       <button class="primary" id="importBtn">Load</button>
       <button id="clearImportBtn">Clear</button>
@@ -433,49 +548,44 @@ canvas { display: block; max-width: 100%; }
     <p class="section-heading">Summary</p>
     <div class="tiles" id="tilesEl"></div>
 
-    <!-- Token limit bar -->
     <div class="limit-section" id="limitSection">
       <div class="limit-header">
         <span class="limit-title">Daily token usage</span>
-        <div class="limit-right">
-          <span class="limit-pct" id="limitPct">0%</span>
-        </div>
+        <span class="limit-pct" id="limitPct">0%</span>
       </div>
       <div class="limit-track">
-        <div class="limit-fill" id="limitFill" style="width:0%"></div>
+        <div class="limit-fill" id="limitFill"></div>
       </div>
       <div class="limit-meta">
         <span id="limitUsed">0 tokens today</span>
         <span id="limitRemain">limit: 1M</span>
       </div>
-      <div class="limit-input-row" style="flex-wrap:wrap;gap:6px">
+      <div class="limit-input-row" style="flex-wrap:wrap;gap:6px;margin-top:12px">
         <span style="font-size:11px;color:var(--fg-dim);width:100%;margin-bottom:2px">claude.ai (est.):</span>
-        <button class="preset-btn" data-val="1000000" style="padding:4px 9px;font-size:11px">Pro ~1M/day</button>
-        <button class="preset-btn" data-val="5000000" style="padding:4px 9px;font-size:11px">Max 5× ~5M/day</button>
-        <button class="preset-btn" data-val="20000000" style="padding:4px 9px;font-size:11px">Max 20× ~20M/day</button>
+        <button class="preset-btn" data-val="1000000">Pro ~1M/day</button>
+        <button class="preset-btn" data-val="5000000">Max 5× ~5M/day</button>
+        <button class="preset-btn" data-val="20000000">Max 20× ~20M/day</button>
       </div>
       <div class="limit-input-row" style="flex-wrap:wrap;gap:6px">
-        <span style="font-size:11px;color:var(--fg-dim);width:100%;margin-bottom:2px">Claude Code (est. — context-heavy, much higher):</span>
-        <button class="preset-btn" data-val="10000000" style="padding:4px 9px;font-size:11px">Pro ~10M/day</button>
-        <button class="preset-btn" data-val="50000000" style="padding:4px 9px;font-size:11px">Max 5× ~50M/day</button>
-        <button class="preset-btn" data-val="200000000" style="padding:4px 9px;font-size:11px">Max 20× ~200M/day</button>
+        <span style="font-size:11px;color:var(--fg-dim);width:100%;margin-bottom:2px">Claude Code (est.):</span>
+        <button class="preset-btn" data-val="10000000">Pro ~10M/day</button>
+        <button class="preset-btn" data-val="50000000">Max 5× ~50M/day</button>
+        <button class="preset-btn" data-val="200000000">Max 20× ~200M/day</button>
       </div>
       <div class="limit-input-row">
-        <label>Custom limit:</label>
+        <label>Custom:</label>
         <input type="number" id="limitInput" value="1000000" step="100000" min="100000">
         <button id="limitSetBtn" style="padding:4px 10px;font-size:12px">Set</button>
         <span style="font-size:11px;color:var(--fg-dim)">tokens/day</span>
       </div>
-      <p style="font-size:10px;color:var(--fg-dim);margin:6px 0 0">⚠ Anthropic doesn't publish exact token limits — these are community estimates.</p>
+      <p style="font-size:10px;color:var(--fg-dim);margin:8px 0 0">⚠ Anthropic doesn't publish exact token limits — these are community estimates.</p>
     </div>
 
-    <!-- Heatmaps -->
     <div class="heatmap-section">
       <p class="section-heading">Activity — last 90 days</p>
       <div class="hm-daily-wrap">
         <div class="hm-daily-inner" id="hmDailyInner"></div>
       </div>
-
       <p class="section-heading" style="margin-top:18px">Hourly breakdown — last 7 days</p>
       <div class="hm-hourly-wrap">
         <div class="hm-hourly-inner">
@@ -501,12 +611,9 @@ canvas { display: block; max-width: 100%; }
       <table>
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Model</th>
-            <th class="num">Input</th>
-            <th class="num">Output</th>
-            <th class="num">Cost</th>
-            <th>Note</th>
+            <th>Timestamp</th><th>Model</th>
+            <th class="num">Input</th><th class="num">Output</th>
+            <th class="num">Cost</th><th>Note</th>
           </tr>
         </thead>
         <tbody id="logTableBody"></tbody>
@@ -515,7 +622,7 @@ canvas { display: block; max-width: 100%; }
   </div>
 
   <div id="emptyState" class="empty-state">
-    <p>No log loaded. Paste your <code>usage_log.json</code> above,<br>or start tracking from the command line:</p>
+    <p>No log loaded. Paste your <code>usage_log.json</code> above,<br>or the app will load it automatically.</p>
     <div class="empty-code">python tracker.py stats
 python tracker.py count "Hello, Claude"
 python tracker.py prices</div>
@@ -534,7 +641,7 @@ python tracker.py prices</div>
       <label>Output tokens</label>
       <input type="number" id="calcOut" value="2000" min="0" step="500">
     </div>
-    <div class="field" style="grid-column: 1/-1">
+    <div class="field" style="grid-column:1/-1">
       <label>Model</label>
       <select id="calcModel"></select>
     </div>
@@ -547,9 +654,6 @@ python tracker.py prices</div>
       <div><div class="cr-label">Per 1K calls</div><div class="cr-val" id="cr1k">—</div></div>
     </div>
   </div>
-  <p style="margin-top:12px; font-size:12px; color:var(--fg-dim)">
-    For precise input token counts, run <code style="font-family:var(--mono)">python tracker.py count "your text"</code>
-  </p>
 </div>
 
 <!-- ── PRICES PANEL ── -->
@@ -561,9 +665,7 @@ python tracker.py prices</div>
       <tbody id="pricesBody"></tbody>
     </table>
   </div>
-  <p style="font-size:11px; color:var(--fg-dim); margin-top:10px">
-    Anthropic first-party API rates · updated 2026-10
-  </p>
+  <p style="font-size:11px;color:var(--fg-dim);margin-top:10px">Anthropic first-party API rates · updated 2026-10</p>
 </div>
 
 <!-- ── CLI REFERENCE PANEL ── -->
@@ -589,10 +691,6 @@ python tracker.py <span class="cmd-kw">count</span> <span class="cmd-flag">-f</s
     <pre>python tracker.py <span class="cmd-kw">log</span> 1842 347 <span class="cmd-flag">-n</span> "chat session"
 python tracker.py <span class="cmd-kw">log</span> 5120 1200 <span class="cmd-flag">--model</span> claude-sonnet-5-5</pre>
 
-    <h3>Quick cost calculation</h3>
-    <pre>python tracker.py <span class="cmd-kw">calc</span> 10000 2000
-python tracker.py <span class="cmd-kw">calc</span> 10000 2000 <span class="cmd-flag">-m</span> claude-sonnet-5-5 claude-haiku-5-5</pre>
-
     <h3>View statistics</h3>
     <pre>python tracker.py <span class="cmd-kw">stats</span>
 python tracker.py <span class="cmd-kw">prices</span></pre>
@@ -600,7 +698,9 @@ python tracker.py <span class="cmd-kw">prices</span></pre>
 </div>
 
 <script>
-// ── Data ──────────────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
+const APP_VERSION = 'v1.0.3';
+const GITHUB_REPO = 'gdave3/token-tracker';
 const MODELS = {
   "claude-opus-5-5":   { input: 4.00,  output: 20.00, label: "Claude Opus 5.5"   },
   "claude-sonnet-5-5": { input: 2.00,  output: 10.00, label: "Claude Sonnet 5.5" },
@@ -620,9 +720,29 @@ try {
 } catch(_) {}
 
 // ── Formatters ────────────────────────────────────────────────────────────────
-const fmtTok = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+const fmtTok  = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
 const fmtCost = c => c === 0 ? '$0.000000' : c < 0.01 ? `$${c.toFixed(6)}` : c < 1 ? `$${c.toFixed(4)}` : `$${c.toFixed(2)}`;
-const fmtNum = n => n.toLocaleString();
+const fmtNum  = n => n.toLocaleString();
+
+// ── Token counter for tile entries ────────────────────────────────────────────
+function computeTok(e) {
+  return e.compute_tokens || ((e.input_tokens||0) + (e.cache_creation_tokens||0) + (e.output_tokens||0));
+}
+
+// ── Counter animation ─────────────────────────────────────────────────────────
+function animateCounter(el, end, formatter, duration = 700) {
+  const start = 0;
+  const startTime = performance.now();
+  function step(now) {
+    const elapsed = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - elapsed, 3); // ease-out-cubic
+    const val = start + (end - start) * eased;
+    el.textContent = formatter(Math.round(val));
+    if (elapsed < 1) requestAnimationFrame(step);
+    else el.textContent = formatter(end);
+  }
+  requestAnimationFrame(step);
+}
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
@@ -649,7 +769,7 @@ Object.entries(MODELS).forEach(([id, m]) => {
   const tr = document.createElement('tr');
   if (id === DEFAULT_MODEL) tr.className = 'default-row';
   tr.innerHTML = `
-    <td>${m.label}${id === DEFAULT_MODEL ? '<span class="default-tag">default</span>' : ''}</td>
+    <td>${m.label}${id===DEFAULT_MODEL?'<span class="default-tag">default</span>':''}</td>
     <td>$${m.input.toFixed(2)}</td>
     <td>$${m.output.toFixed(2)}</td>`;
   pricesBody.appendChild(tr);
@@ -666,8 +786,7 @@ Object.entries(MODELS).forEach(([id, m]) => {
 function updateCalc() {
   const inTok = parseInt(document.getElementById('calcIn').value) || 0;
   const outTok = parseInt(document.getElementById('calcOut').value) || 0;
-  const model = calcModelSel.value;
-  const p = MODELS[model] || MODELS[DEFAULT_MODEL];
+  const p = MODELS[calcModelSel.value] || MODELS[DEFAULT_MODEL];
   const cIn = inTok * p.input / 1e6, cOut = outTok * p.output / 1e6, cTot = cIn + cOut;
   document.getElementById('crIn').textContent    = fmtCost(cIn);
   document.getElementById('crOut').textContent   = fmtCost(cOut);
@@ -687,104 +806,84 @@ document.getElementById('limitSetBtn').addEventListener('click', () => {
     if (logData) renderLimitBar(logData.entries);
   }
 });
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const v = parseInt(btn.dataset.val);
+    dailyLimit = v;
+    document.getElementById('limitInput').value = v;
+    try { localStorage.setItem('tokenDailyLimit', v); } catch(_) {}
+    if (logData) renderLimitBar(logData.entries);
+  });
+});
 
 function renderLimitBar(entries) {
   const today = new Date().toISOString().slice(0, 10);
   let todayTok = 0;
-  entries.forEach(e => {
-    if ((e.ts || '').startsWith(today)) {
-      todayTok += (e.input_tokens || 0) + (e.output_tokens || 0);
-    }
-  });
+  entries.forEach(e => { if ((e.ts||'').startsWith(today)) todayTok += computeTok(e); });
   const pct = Math.min(100, (todayTok / dailyLimit) * 100);
   const pctEl = document.getElementById('limitPct');
   const fillEl = document.getElementById('limitFill');
   pctEl.textContent = Math.round(pct) + '%';
   fillEl.style.width = pct + '%';
   const cls = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '';
-  pctEl.className = 'limit-pct' + (cls ? ' ' + cls : '');
-  fillEl.className = 'limit-fill' + (cls ? ' ' + cls : '');
-  document.getElementById('limitUsed').textContent = fmtTok(todayTok) + ' tokens today';
-  document.getElementById('limitRemain').textContent = 'limit: ' + fmtTok(dailyLimit);
+  pctEl.className = 'limit-pct' + (cls ? ' '+cls : '');
+  fillEl.className = 'limit-fill' + (cls ? ' '+cls : '');
+  document.getElementById('limitUsed').textContent    = fmtTok(todayTok) + ' tokens today';
+  document.getElementById('limitRemain').textContent  = 'limit: ' + fmtTok(dailyLimit);
 }
 
 // ── Heatmap helpers ───────────────────────────────────────────────────────────
 function hmLevel(tokens, max) {
-  if (!tokens || tokens === 0) return 0;
+  if (!tokens) return 0;
   if (tokens < max * 0.15) return 1;
   if (tokens < max * 0.40) return 2;
   if (tokens < max * 0.70) return 3;
   return 4;
 }
 
-// ── Daily heatmap (GitHub style) ──────────────────────────────────────────────
+// ── Daily heatmap ─────────────────────────────────────────────────────────────
 function renderDailyHeatmap(entries) {
-  // Build day→tokens map
   const dayMap = {};
   entries.forEach(e => {
-    const day = (e.ts || '').slice(0, 10);
-    if (!day) return;
-    dayMap[day] = (dayMap[day] || 0) + (e.input_tokens || 0) + (e.output_tokens || 0);
+    const day = (e.ts||'').slice(0,10);
+    if (day) dayMap[day] = (dayMap[day]||0) + computeTok(e);
   });
   const maxTok = Math.max(...Object.values(dayMap), 1);
 
-  // Build 13 weeks × 7 days grid ending today
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  // Find the Sunday on or before 13 weeks ago
+  const today = new Date(); today.setHours(0,0,0,0);
   const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - 13 * 7 + 1);
-  // Go back to Sunday
-  startDate.setDate(startDate.getDate() - startDate.getDay());
+  startDate.setDate(startDate.getDate() - 13*7 + 1 - startDate.getDay());
 
-  const DAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];
+  const DAY_LABELS = ['','M','','W','','F',''];
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
   const container = document.getElementById('hmDailyInner');
   container.innerHTML = '';
 
-  // Day labels column
   const dayLabelsEl = document.createElement('div');
   dayLabelsEl.className = 'hm-day-labels';
   DAY_LABELS.forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'hm-day-label';
-    el.textContent = d;
+    const el = document.createElement('div'); el.className = 'hm-day-label'; el.textContent = d;
     dayLabelsEl.appendChild(el);
   });
   container.appendChild(dayLabelsEl);
 
-  // Weeks
-  const weeksEl = document.createElement('div');
-  weeksEl.className = 'hm-weeks';
-
-  // Month labels row
-  const monthLabels = document.createElement('div');
-  monthLabels.className = 'hm-month-labels';
-
+  const weeksEl = document.createElement('div'); weeksEl.className = 'hm-weeks';
+  const monthLabels = document.createElement('div'); monthLabels.className = 'hm-month-labels';
   let lastMonth = -1;
   const d = new Date(startDate);
   for (let w = 0; w < 14; w++) {
-    const weekEl = document.createElement('div');
-    weekEl.className = 'hm-week';
-
-    // Month label for this week
-    const monthLabel = document.createElement('div');
-    monthLabel.className = 'hm-month-label';
+    const weekEl = document.createElement('div'); weekEl.className = 'hm-week';
+    const monthLabel = document.createElement('div'); monthLabel.className = 'hm-month-label';
     const weekMonth = new Date(d).getMonth();
     if (weekMonth !== lastMonth && new Date(d).getDate() <= 7) {
-      monthLabel.textContent = MONTHS[weekMonth];
-      lastMonth = weekMonth;
+      monthLabel.textContent = MONTHS[weekMonth]; lastMonth = weekMonth;
     }
     monthLabels.appendChild(monthLabel);
-
     for (let dd = 0; dd < 7; dd++) {
-      const dayStr = d.toISOString().slice(0, 10);
+      const dayStr = d.toISOString().slice(0,10);
       const tok = dayMap[dayStr] || 0;
       const isFuture = d > today;
-
-      const cell = document.createElement('div');
-      cell.className = 'hm-cell';
+      const cell = document.createElement('div'); cell.className = 'hm-cell';
       if (!isFuture) cell.setAttribute('data-l', hmLevel(tok, maxTok));
       cell.title = `${dayStr}: ${fmtTok(tok)} tokens`;
       weekEl.appendChild(cell);
@@ -792,8 +891,6 @@ function renderDailyHeatmap(entries) {
     }
     weeksEl.appendChild(weekEl);
   }
-
-  // Prepend month labels row
   const monthRow = document.createElement('div');
   monthRow.style.cssText = 'display:flex;gap:3px;margin-bottom:4px;padding-left:20px';
   monthRow.appendChild(monthLabels);
@@ -803,51 +900,36 @@ function renderDailyHeatmap(entries) {
 
 // ── Hourly heatmap ────────────────────────────────────────────────────────────
 function renderHourlyHeatmap(entries) {
-  // Build day+hour → tokens map
   const hourMap = {};
   entries.forEach(e => {
     if (!e.ts) return;
-    const day = e.ts.slice(0, 10);
-    const hour = parseInt(e.ts.slice(11, 13));
-    const key = `${day}_${hour}`;
-    hourMap[key] = (hourMap[key] || 0) + (e.input_tokens || 0) + (e.output_tokens || 0);
+    const key = `${e.ts.slice(0,10)}_${parseInt(e.ts.slice(11,13))}`;
+    hourMap[key] = (hourMap[key]||0) + computeTok(e);
   });
   const maxTok = Math.max(...Object.values(hourMap), 1);
 
-  // Hour axis labels (0, 3, 6, 9, 12, 15, 18, 21)
   const axisEl = document.getElementById('hmHourAxis');
   axisEl.innerHTML = '';
   for (let h = 0; h < 24; h++) {
-    const el = document.createElement('div');
-    el.className = 'hm-ha-label';
+    const el = document.createElement('div'); el.className = 'hm-ha-label';
     el.textContent = (h % 3 === 0) ? String(h).padStart(2,'0') : '';
     axisEl.appendChild(el);
   }
 
-  // Last 7 days
   const rowsEl = document.getElementById('hmHourlyRows');
   rowsEl.innerHTML = '';
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dayStr = d.toISOString().slice(0, 10);
-    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : dayStr.slice(5); // MM-DD
-
-    const row = document.createElement('div');
-    row.className = 'hm-hour-row';
-
-    const labelEl = document.createElement('div');
-    labelEl.className = 'hm-hour-label';
-    labelEl.textContent = label;
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const dayStr = d.toISOString().slice(0,10);
+    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : dayStr.slice(5);
+    const row = document.createElement('div'); row.className = 'hm-hour-row';
+    const labelEl = document.createElement('div'); labelEl.className = 'hm-hour-label'; labelEl.textContent = label;
     row.appendChild(labelEl);
-
-    const cells = document.createElement('div');
-    cells.className = 'hm-hour-cells';
+    const cells = document.createElement('div'); cells.className = 'hm-hour-cells';
     for (let h = 0; h < 24; h++) {
       const tok = hourMap[`${dayStr}_${h}`] || 0;
-      const cell = document.createElement('div');
-      cell.className = 'hm-h-cell';
+      const cell = document.createElement('div'); cell.className = 'hm-h-cell';
       cell.setAttribute('data-l', hmLevel(tok, maxTok));
       cell.setAttribute('data-tip', `${h}:00  ${fmtTok(tok)}`);
       cells.appendChild(cell);
@@ -856,13 +938,10 @@ function renderHourlyHeatmap(entries) {
     rowsEl.appendChild(row);
   }
 
-  // Legend
   const legendEl = document.getElementById('hmLegend');
   legendEl.innerHTML = '<span>Less</span>';
   [0,1,2,3,4].forEach(l => {
-    const c = document.createElement('div');
-    c.className = 'hm-legend-cell hm-h-cell';
-    c.setAttribute('data-l', l);
+    const c = document.createElement('div'); c.className = 'hm-legend-cell hm-h-cell'; c.setAttribute('data-l', l);
     legendEl.appendChild(c);
   });
   legendEl.innerHTML += '<span>More</span>';
@@ -882,14 +961,11 @@ document.getElementById('importBtn').addEventListener('click', () => {
     msg.textContent = `✓ ${data.entries.length} entries loaded`;
     document.getElementById('importDetails').open = false;
     try { localStorage.setItem('tokenTrackerLog', raw); } catch(_) {}
-  } catch(e) {
-    showError('Invalid JSON: ' + e.message);
-  }
+  } catch(e) { showError('Invalid JSON: ' + e.message); }
 });
 function showError(txt) {
   const msg = document.getElementById('importMsg');
-  msg.className = 'import-err';
-  msg.textContent = txt;
+  msg.className = 'import-err'; msg.textContent = txt;
 }
 document.getElementById('clearImportBtn').addEventListener('click', () => {
   document.getElementById('logPaste').value = '';
@@ -911,45 +987,69 @@ try {
 // ── Render log ────────────────────────────────────────────────────────────────
 function renderLog(data) {
   document.getElementById('emptyState').hidden = true;
-
   const t = data.totals;
   const totalTok = (t.input_tokens||0) + (t.output_tokens||0);
-  const tilesEl = document.getElementById('tilesEl');
 
-  // Today's stats
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0,10);
   let todayCost = 0, todayTok = 0;
   data.entries.forEach(e => {
     if ((e.ts||'').startsWith(today)) {
       todayCost += e.cost_usd || 0;
-      todayTok += (e.input_tokens||0) + (e.output_tokens||0);
+      todayTok  += computeTok(e);
     }
   });
 
+  // Build tiles with counter animation
+  const tilesEl = document.getElementById('tilesEl');
   tilesEl.innerHTML = `
-    <div class="tile"><div class="tile-label">Entries</div><div class="tile-value">${fmtNum(data.entries.length)}</div></div>
-    <div class="tile"><div class="tile-label">Today tokens</div><div class="tile-value">${fmtTok(todayTok)}</div><div class="tile-sub">${fmtCost(todayCost)}</div></div>
-    <div class="tile"><div class="tile-label">Total tokens</div><div class="tile-value">${fmtTok(totalTok)}</div><div class="tile-sub">${fmtNum(totalTok)}</div></div>
-    <div class="tile"><div class="tile-label">Total cost</div><div class="tile-value" style="color:var(--green)">${fmtCost(t.cost_usd||0)}</div></div>
+    <div class="tile">
+      <div class="tile-label">Entries</div>
+      <div class="tile-value" id="tv-entries">0</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Today compute</div>
+      <div class="tile-value" id="tv-today">0</div>
+      <div class="tile-sub" id="tv-today-cost">—</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Total tokens</div>
+      <div class="tile-value" id="tv-total">0</div>
+      <div class="tile-sub">${fmtNum(totalTok)} raw</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Total cost</div>
+      <div class="tile-value" id="tv-cost" style="color:var(--green)">—</div>
+    </div>
   `;
   document.getElementById('statsSection').hidden = false;
 
-  // Limit bar
-  renderLimitBar(data.entries);
+  // Animate counters (respecting reduced-motion)
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) {
+    document.getElementById('tv-entries').textContent  = fmtNum(data.entries.length);
+    document.getElementById('tv-today').textContent    = fmtTok(todayTok);
+    document.getElementById('tv-today-cost').textContent = fmtCost(todayCost);
+    document.getElementById('tv-total').textContent    = fmtTok(totalTok);
+    document.getElementById('tv-cost').textContent     = fmtCost(t.cost_usd||0);
+  } else {
+    animateCounter(document.getElementById('tv-entries'), data.entries.length, fmtNum);
+    animateCounter(document.getElementById('tv-today'),   todayTok, fmtTok);
+    document.getElementById('tv-today-cost').textContent = fmtCost(todayCost);
+    animateCounter(document.getElementById('tv-total'),   totalTok, fmtTok);
+    document.getElementById('tv-cost').textContent = fmtCost(t.cost_usd||0);
+  }
 
-  // Heatmaps
+  renderLimitBar(data.entries);
   renderDailyHeatmap(data.entries);
   renderHourlyHeatmap(data.entries);
 
-  // Per-model breakdown
+  // Model breakdown
   const byModel = {};
   data.entries.forEach(e => {
     const m = e.model || 'unknown';
-    if (!byModel[m]) byModel[m] = { input:0, output:0, cost:0, n:0 };
-    byModel[m].input  += e.input_tokens || 0;
-    byModel[m].output += e.output_tokens || 0;
-    byModel[m].cost   += e.cost_usd || 0;
-    byModel[m].n++;
+    if (!byModel[m]) byModel[m] = { tok:0, cost:0 };
+    byModel[m].tok  += computeTok(e);
+    byModel[m].cost += e.cost_usd || 0;
   });
   const maxCost = Math.max(...Object.values(byModel).map(v=>v.cost), 0.000001);
   const breakdownEl = document.getElementById('breakdownEl');
@@ -960,10 +1060,16 @@ function renderLog(data) {
     const li = document.createElement('li');
     li.innerHTML = `
       <span class="b-model">${label}</span>
-      <span class="b-tok">${fmtTok(v.input+v.output)} tok</span>
+      <span class="b-tok">${fmtTok(v.tok)}</span>
       <span class="b-cost">${fmtCost(v.cost)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>`;
+      <div class="bar-track"><div class="bar-fill" data-pct="${pct}"></div></div>`;
     breakdownEl.appendChild(li);
+  });
+  // Animate bars after a tick so CSS transition fires
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.bar-fill').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
   });
 
   renderChart(data.entries);
@@ -972,9 +1078,9 @@ function renderLog(data) {
   const tbody = document.getElementById('logTableBody');
   tbody.innerHTML = '';
   [...data.entries].reverse().forEach(e => {
-    const ts = (e.ts||'').replace('T',' ').replace('Z','').slice(0,16);
+    const ts    = (e.ts||'').replace('T',' ').replace('Z','').slice(0,16);
     const label = (MODELS[e.model||'']||{}).label || e.model || '—';
-    const tr = document.createElement('tr');
+    const tr    = document.createElement('tr');
     tr.innerHTML = `
       <td>${ts}</td>
       <td><span class="model-badge">${label}</span></td>
@@ -987,40 +1093,55 @@ function renderLog(data) {
   document.getElementById('tableSection').hidden = false;
 }
 
-// ── Subscription presets ──────────────────────────────────────────────────────
-document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const v = parseInt(btn.dataset.val);
-    dailyLimit = v;
-    document.getElementById('limitInput').value = v;
-    try { localStorage.setItem('tokenDailyLimit', v); } catch(_) {}
-    if (logData) renderLimitBar(logData.entries);
-  });
-});
-
-// ── Auto-fetch from local menubar server (port 8765) ─────────────────────────
-const LOCAL_URL = '/usage_log.json';
-const liveEl = document.getElementById('liveStatus');
-
+// ── Auto-fetch from local server ──────────────────────────────────────────────
+const liveDot   = document.getElementById('liveDot');
+const liveLabel = document.getElementById('liveLabel');
 async function fetchLive() {
   try {
-    const res = await fetch(LOCAL_URL, { cache: 'no-store' });
+    const res  = await fetch('/usage_log.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('bad status');
     const data = await res.json();
     if (!data.entries) throw new Error('no entries');
     logData = data;
     renderLog(data);
-    liveEl.textContent = '⬤ live';
-    liveEl.style.color = 'var(--green)';
+    liveDot.classList.add('on');
+    liveLabel.textContent = 'live';
+    liveLabel.style.color = 'var(--green)';
     try { localStorage.setItem('tokenTrackerLog', JSON.stringify(data)); } catch(_) {}
-  } catch(e) {
-    liveEl.textContent = '⬤ offline';
-    liveEl.style.color = 'var(--fg-dim)';
+  } catch(_) {
+    liveDot.classList.remove('on');
+    liveLabel.textContent = 'offline';
+    liveLabel.style.color = '';
   }
 }
-
 fetchLive();
 setInterval(fetchLive, 10_000);
+
+// ── Update check ──────────────────────────────────────────────────────────────
+async function checkUpdate() {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) return;
+    const rel = await res.json();
+    const latest = rel.tag_name || '';
+    if (!latest || latest === APP_VERSION) return;
+    // Newer version available
+    const banner = document.getElementById('updateBanner');
+    const dlUrl  = rel.html_url || `https://github.com/${GITHUB_REPO}/releases/latest`;
+    banner.innerHTML = `
+      <div class="banner-inner">
+        <span>Update available: <strong>${latest}</strong> (you have ${APP_VERSION})</span>
+        <a href="${dlUrl}" target="_blank" rel="noopener">Download →</a>
+        <button onclick="this.closest('#updateBanner').style.display='none'"
+                style="margin-left:auto;padding:2px 8px;font-size:11px">×</button>
+      </div>`;
+    banner.style.display = 'block';
+  } catch(_) { /* silently ignore — no internet, or artifact sandbox */ }
+}
+// Delay update check so it doesn't race with the main fetch
+setTimeout(checkUpdate, 3000);
 
 // ── Drag-and-drop JSON file ───────────────────────────────────────────────────
 const dropZone = document.getElementById('importDetails');
@@ -1032,9 +1153,7 @@ const dropZone = document.getElementById('importDetails');
 });
 dropZone.addEventListener('drop', e => {
   const file = e.dataTransfer.files[0];
-  if (!file || !file.name.endsWith('.json')) {
-    showError('Drop a .json file'); return;
-  }
+  if (!file || !file.name.endsWith('.json')) { showError('Drop a .json file'); return; }
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('logPaste').value = ev.target.result;
@@ -1042,8 +1161,6 @@ dropZone.addEventListener('drop', e => {
   };
   reader.readAsText(file);
 });
-
-// Also allow dropping anywhere on the page
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => {
   const file = e.dataTransfer.files[0];
@@ -1061,39 +1178,39 @@ document.addEventListener('drop', e => {
 // ── Sparkline chart ───────────────────────────────────────────────────────────
 function renderChart(entries) {
   if (entries.length < 2) return;
-  const wrap = document.getElementById('chartWrap');
+  const wrap   = document.getElementById('chartWrap');
   const canvas = document.getElementById('costChart');
-  const days = {};
+  const days   = {};
   entries.forEach(e => {
-    const day = (e.ts||'').slice(0,10);
-    if (!day) return;
+    const day = (e.ts||'').slice(0,10); if (!day) return;
     days[day] = (days[day]||0) + (e.cost_usd||0);
   });
   const keys = Object.keys(days).sort();
   if (keys.length < 2) return;
   const vals = keys.map(k => days[k]);
-  const max = Math.max(...vals);
+  const max  = Math.max(...vals);
   wrap.hidden = false;
   const W = Math.min(canvas.parentElement.clientWidth - 32, 800);
   const H = 80;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
-  const pad = { l: 8, r: 8, t: 8, b: 20 };
-  const xStep = (W - pad.l - pad.r) / (keys.length - 1);
+  const pad = { l:8, r:8, t:8, b:20 };
+  const xStep  = (W - pad.l - pad.r) / (keys.length - 1);
   const yScale = max > 0 ? (H - pad.t - pad.b) / max : 1;
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-  const dimColor = getComputedStyle(document.documentElement).getPropertyValue('--fg-dim').trim();
+  const cs  = getComputedStyle(document.documentElement);
+  const accent = cs.getPropertyValue('--accent').trim();
+  const dim    = cs.getPropertyValue('--fg-dim').trim();
   ctx.clearRect(0, 0, W, H);
   ctx.beginPath();
   vals.forEach((v, i) => {
     const x = pad.l + i * xStep, y = H - pad.b - v * yScale;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
-  ctx.lineTo(pad.l + (keys.length-1)*xStep, H - pad.b);
-  ctx.lineTo(pad.l, H - pad.b);
+  ctx.lineTo(pad.l + (keys.length-1)*xStep, H-pad.b);
+  ctx.lineTo(pad.l, H-pad.b);
   ctx.closePath();
-  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
-  grad.addColorStop(0, accent + '55'); grad.addColorStop(1, accent + '08');
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H-pad.b);
+  grad.addColorStop(0, accent+'55'); grad.addColorStop(1, accent+'08');
   ctx.fillStyle = grad; ctx.fill();
   ctx.beginPath();
   vals.forEach((v, i) => {
@@ -1102,14 +1219,13 @@ function renderChart(entries) {
   });
   ctx.strokeStyle = accent; ctx.lineWidth = 1.5; ctx.stroke();
   [0, vals.length-1].forEach(i => {
-    const x = pad.l + i * xStep, y = H - pad.b - vals[i] * yScale;
-    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2);
+    ctx.beginPath(); ctx.arc(pad.l+i*xStep, H-pad.b-vals[i]*yScale, 3, 0, Math.PI*2);
     ctx.fillStyle = accent; ctx.fill();
   });
-  ctx.fillStyle = dimColor; ctx.font = '10px IBM Plex Mono, monospace';
+  ctx.fillStyle = dim; ctx.font = '10px JetBrains Mono,IBM Plex Mono,monospace';
   ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';
   ctx.fillText(keys[0], pad.l, H);
   ctx.textAlign = 'right';
-  ctx.fillText(keys[keys.length-1], W - pad.r, H);
+  ctx.fillText(keys[keys.length-1], W-pad.r, H);
 }
 </script>
