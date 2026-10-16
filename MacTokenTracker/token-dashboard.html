@@ -754,6 +754,8 @@ python tracker.py <span class="cmd-kw">prices</span></pre>
 // ── Config ────────────────────────────────────────────────────────────────────
 const APP_VERSION = 'v1.0.13';
 const fmtTs = ts => ts ? new Date(ts).toLocaleString(undefined, {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}) : '—';
+// Returns local date string YYYY-MM-DD for a UTC ISO timestamp
+const localDate = ts => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 const GITHUB_REPO = 'gdave3/token-tracker';
 const MODELS = {
   "claude-opus-5-5":   { input: 4.00,  output: 20.00, label: "Claude Opus 5.5"   },
@@ -889,9 +891,9 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 });
 
 function renderLimitBar(entries) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDate(new Date().toISOString());
   let todayTok = 0;
-  entries.forEach(e => { if ((e.ts||'').startsWith(today)) todayTok += computeTok(e); });
+  entries.forEach(e => { if (e.ts && localDate(e.ts) === today) todayTok += computeTok(e); });
   const pct = Math.min(100, (todayTok / dailyLimit) * 100);
   const pctEl = document.getElementById('limitPct');
   const fillEl = document.getElementById('limitFill');
@@ -917,8 +919,9 @@ function hmLevel(tokens, max) {
 function renderDailyHeatmap(entries) {
   const dayMap = {};
   entries.forEach(e => {
-    const day = (e.ts||'').slice(0,10);
-    if (day) dayMap[day] = (dayMap[day]||0) + computeTok(e);
+    if (!e.ts) return;
+    const day = localDate(e.ts);
+    dayMap[day] = (dayMap[day]||0) + computeTok(e);
   });
   const maxTok = Math.max(...Object.values(dayMap), 1);
 
@@ -952,7 +955,7 @@ function renderDailyHeatmap(entries) {
     }
     monthLabels.appendChild(monthLabel);
     for (let dd = 0; dd < 7; dd++) {
-      const dayStr = d.toISOString().slice(0,10);
+      const dayStr = localDate(d.toISOString());
       const tok = dayMap[dayStr] || 0;
       const isFuture = d > today;
       const cell = document.createElement('div'); cell.className = 'hm-cell';
@@ -975,7 +978,8 @@ function renderHourlyHeatmap(entries) {
   const hourMap = {};
   entries.forEach(e => {
     if (!e.ts) return;
-    const key = `${e.ts.slice(0,10)}_${parseInt(e.ts.slice(11,13))}`;
+    const d = new Date(e.ts);
+    const key = `${localDate(e.ts)}_${d.getHours()}`;
     hourMap[key] = (hourMap[key]||0) + computeTok(e);
   });
   const maxTok = Math.max(...Object.values(hourMap), 1);
@@ -993,7 +997,7 @@ function renderHourlyHeatmap(entries) {
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today); d.setDate(d.getDate() - i);
-    const dayStr = d.toISOString().slice(0,10);
+    const dayStr = localDate(d.toISOString());
     const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : dayStr.slice(5);
     const row = document.createElement('div'); row.className = 'hm-hour-row';
     const labelEl = document.createElement('div'); labelEl.className = 'hm-hour-label'; labelEl.textContent = label;
@@ -1062,10 +1066,10 @@ function renderLog(data) {
   const t = data.totals;
   const totalTok = (t.input_tokens||0) + (t.output_tokens||0);
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDate(new Date().toISOString());
   let todayCost = 0, todayTok = 0;
   data.entries.forEach(e => {
-    if ((e.ts||'').startsWith(today)) {
+    if (e.ts && localDate(e.ts) === today) {
       todayCost += e.cost_usd || 0;
       todayTok  += computeTok(e);
     }
@@ -1174,10 +1178,10 @@ const refreshBtn   = document.getElementById('refreshBtn');
 let prevSummary = null; // tracks last-rendered tile values
 
 function computeSummary(data) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDate(new Date().toISOString());
   let todayCost = 0, todayTok = 0;
   data.entries.forEach(e => {
-    if ((e.ts||'').startsWith(today)) {
+    if (e.ts && localDate(e.ts) === today) {
       todayCost += e.cost_usd || 0;
       todayTok  += computeTok(e);
     }
@@ -1417,7 +1421,7 @@ function renderChart(entries) {
   const canvas = document.getElementById('costChart');
   const days   = {};
   entries.forEach(e => {
-    const day = (e.ts||'').slice(0,10); if (!day) return;
+    const day = e.ts ? localDate(e.ts) : ''; if (!day) return;
     days[day] = (days[day]||0) + (e.cost_usd||0);
   });
   const keys = Object.keys(days).sort();
