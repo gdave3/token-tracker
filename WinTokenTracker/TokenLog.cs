@@ -37,7 +37,7 @@ public class LogManager
     private readonly object   _lock = new();
     private          TokenLog _log  = new();
 
-    private static readonly Dictionary<string, (double inp, double out, double cc, double cr)> Rates = new()
+    private static readonly Dictionary<string, (double inp, double outp, double cc, double cr)> Rates = new()
     {
         ["claude-opus-5-5"]   = (15.0, 75.0, 18.75, 1.50),
         ["claude-sonnet-5-5"] = ( 3.0, 15.0,  3.75, 0.30),
@@ -82,7 +82,7 @@ public class LogManager
     private double CostUsd(int inp, int outp, int cc, int cr, string model)
     {
         var r = Rates.GetValueOrDefault(model, (3.0, 15.0, 3.75, 0.30));
-        return (inp * r.inp + outp * r.out + cc * r.cc + cr * r.cr) / 1_000_000;
+        return (inp * r.inp + outp * r.outp + cc * r.cc + cr * r.cr) / 1_000_000;
     }
 
     public void AddEntry(string ts, string type, string model, string note,
