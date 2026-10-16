@@ -202,10 +202,17 @@ def cmd_calc(args):
 
 def estimate_tokens(text: str) -> int:
     """Local token estimate: chars/4 with adjustments for code and whitespace."""
-    # Code blocks tend to tokenize more densely (~3 chars/token)
     code_chars = sum(len(m) for m in re.findall(r'```[\s\S]*?```', text))
     rest_chars = len(text) - code_chars
     return int(code_chars / 3 + rest_chars / 4)
+
+
+def _load_compaction():
+    try:
+        from plugin_compaction import adjust_for_compaction
+        return adjust_for_compaction
+    except ImportError:
+        return None
 
 
 def cmd_estimate(args):
@@ -256,6 +263,18 @@ def cmd_estimate(args):
         p = MODELS.get(m, MODELS[DEFAULT_MODEL])
         c = cost_usd(input_tok, output_tok, m)
         print(f"    {m:<22}  {fmt_cost(c)}")
+
+    # Compaction detection
+    adjust = _load_compaction()
+    if adjust and raw:
+        adj_input, adj_output, comp_report = adjust(input_tok, output_tok, raw)
+        if comp_report.events:
+            print(f"\n  ── Compaction detected ───────────────────────")
+            print(f"  {comp_report.summary_line()}")
+            print(f"  Adjusted input : ~{fmt_tokens(adj_input)}  (was {fmt_tokens(input_tok)})")
+            input_tok = adj_input
+            output_tok = adj_output
+            total = input_tok + output_tok
 
     if args.log and total > 0:
         data = load_log()

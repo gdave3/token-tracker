@@ -181,13 +181,24 @@ class TokenTrackerApp(rumps.App):
             )
             return
 
+        # Compaction detection — add back compressed tokens
+        compaction_note = ""
+        try:
+            from plugin_compaction import adjust_for_compaction
+            inp, out, comp_report = adjust_for_compaction(inp, out, text)
+            total = inp + out
+            if comp_report.events and comp_report.total_dropped > 0:
+                compaction_note = f" (+{fmt_tok(comp_report.total_dropped)} compacted)"
+        except ImportError:
+            pass
+
         c = cost_usd(inp, out, self.model)
         data = load_log()
         entry = {
             "ts": datetime.utcnow().isoformat() + "Z",
             "type": "estimate",
             "model": self.model,
-            "note": "clipboard",
+            "note": f"clipboard{compaction_note}",
             "input_tokens": inp,
             "output_tokens": out,
             "cost_usd": c,
@@ -201,7 +212,7 @@ class TokenTrackerApp(rumps.App):
         self.refresh()
         rumps.notification(
             title="Claude Token Tracker",
-            subtitle=f"Logged ~{fmt_tok(total)} tokens",
+            subtitle=f"Logged ~{fmt_tok(total)} tokens{compaction_note}",
             message=f"In: {fmt_tok(inp)}  Out: {fmt_tok(out)}  Est. cost: {fmt_cost(c)}",
         )
 
