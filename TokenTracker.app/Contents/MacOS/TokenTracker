@@ -1,0 +1,24 @@
+#!/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+import os
+import time
+import subprocess
+
+PYTHON = "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3"
+SCRIPT = "/Users/ryudave/Desktop/TOKEN/menubar.py"
+LOG    = "/tmp/token_tracker.log"
+DASHBOARD = "https://claude.ai/artifact/LzKo2EZrd27yL6dxZco53q"
+
+def is_running():
+    r = subprocess.run(["pgrep", "-f", "menubar.py"], capture_output=True)
+    pids = [p for p in r.stdout.decode().strip().split() if p and p != str(os.getpid())]
+    return len(pids) > 0
+
+if not is_running():
+    with open(LOG, "a") as log:
+        subprocess.Popen([PYTHON, SCRIPT], stdout=log, stderr=log, start_new_session=True)
+    time.sleep(2)
+
+subprocess.run(["open", DASHBOARD])
+
+while is_running():
+    time.sleep(3)

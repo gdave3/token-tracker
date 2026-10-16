@@ -54,6 +54,7 @@ class JsonlWatcher:
     def __init__(self, on_tokens):
         self.on_tokens = on_tokens
         self._positions: dict = {}   # path → byte offset
+        self._seen: set = set()      # dedup by (path, byte_offset)
         self._lock = threading.Lock()
 
     def _scan_file(self, path: Path):
@@ -66,7 +67,11 @@ class JsonlWatcher:
                 new_pos = f.tell()
             if not new_bytes:
                 return
+            dedup_key = (str(path), pos, new_pos)
             with self._lock:
+                if dedup_key in self._seen:
+                    return
+                self._seen.add(dedup_key)
                 self._positions[str(path)] = new_pos
             for line in new_bytes.decode("utf-8", errors="replace").splitlines():
                 if not line.strip():

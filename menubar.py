@@ -12,6 +12,8 @@ Usage:
 import re
 import json
 import rumps
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, date
 from pathlib import Path
 from collections import deque
@@ -26,6 +28,34 @@ MODELS = {
     "claude-haiku-5-5":  {"input": 0.10,  "output": 0.50},
 }
 
+
+# ── Local API server (serves usage_log.json to the dashboard) ────────────────
+LOCAL_API_PORT = 8765
+
+class _LogHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/usage_log.json":
+            data = LOG_FILE.read_bytes() if LOG_FILE.exists() else b"{}"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(data)
+        else:
+            self.send_response(404)
+            self.end_headers()
+    def log_message(self, *args):
+        pass  # silence server logs
+
+def _start_api_server():
+    try:
+        server = HTTPServer(("127.0.0.1", LOCAL_API_PORT), _LogHandler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+    except Exception:
+        pass
+
+_start_api_server()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -113,15 +143,18 @@ class TokenTrackerApp(rumps.App):
         title = self._make_title(tok, cost)
         super().__init__(title, quit_button=None)
         self.model = DEFAULT_MODEL
-        self._recent: deque = deque(maxlen=5)   # recent live events
+        self._recent: deque = deque(maxlen=5)
         self._live_enabled = False
+        self.title = self._make_title(tok, cost)  # re-render with dot
         self._build_menu()
         self._start_live_watcher()
+        rumps.Timer(self._auto_refresh, 10).start()
 
     def _make_title(self, tok: int, cost: float) -> str:
+        dot = "🟢" if getattr(self, "_live_enabled", False) else "⚪"
         if tok == 0:
-            return "𝒯 —"
-        return f"𝒯 {fmt_tok(tok)}"
+            return f"{dot} 𝒯 —"
+        return f"{dot} 𝒯 {fmt_tok(tok)}"
 
     def _build_menu(self):
         data = load_log()
@@ -208,6 +241,9 @@ class TokenTrackerApp(rumps.App):
 
         # Refresh UI from main thread
         rumps.Timer(self._do_refresh, 0).start()
+
+    def _auto_refresh(self, timer):
+        self.refresh()
 
     def _do_refresh(self, timer):
         timer.stop()
