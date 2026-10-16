@@ -53,19 +53,30 @@ def load_log():
 def save_log(data):
     LOG_FILE.write_text(json.dumps(data, indent=2))
 
-def cost_usd(inp, out, model="claude-sonnet-5-5"):
-    rates = {"claude-opus-5-5": (4.0, 20.0), "claude-haiku-5-5": (0.1, 0.5)}
-    i, o = rates.get(model, (2.0, 10.0))
-    return (inp * i + out * o) / 1_000_000
+def cost_usd(inp, out, model="claude-sonnet-5-5", cache_create=0, cache_read=0):
+    # Per-million rates: (input, output, cache_write, cache_read)
+    RATES = {
+        "claude-opus-5-5":   (15.0, 75.0,  18.75, 1.50),
+        "claude-sonnet-5-5": ( 3.0, 15.0,   3.75, 0.30),
+        "claude-haiku-5-5":  ( 0.80, 4.0,   1.00, 0.08),
+        "claude-opus-4-5":   (15.0, 75.0,  18.75, 1.50),
+        "claude-sonnet-4-6": ( 3.0, 15.0,   3.75, 0.30),
+        "claude-haiku-4-5":  ( 0.80, 4.0,   1.00, 0.08),
+    }
+    ri, ro, rcc, rcr = RATES.get(model, (3.0, 15.0, 3.75, 0.30))
+    return (inp * ri + out * ro + cache_create * rcc + cache_read * rcr) / 1_000_000
 
-def on_tokens(inp, out, model, source):
-    if inp + out == 0: return
-    c = cost_usd(inp, out, model)
+def on_tokens(inp, out, model, source, cache_create=0, cache_read=0):
+    if inp + out + cache_create + cache_read == 0: return
+    c = cost_usd(inp, out, model, cache_create=cache_create, cache_read=cache_read)
+    compute = inp + cache_create + out   # excludes cache reads
     data = load_log()
     data["entries"].append({
         "ts": datetime.utcnow().isoformat() + "Z",
         "type": "live", "model": model, "note": source,
-        "input_tokens": inp, "output_tokens": out, "cost_usd": c,
+        "input_tokens": inp, "cache_creation_tokens": cache_create,
+        "cache_read_tokens": cache_read, "output_tokens": out,
+        "compute_tokens": compute, "cost_usd": c,
     })
     data["totals"]["input_tokens"]  += inp
     data["totals"]["output_tokens"] += out
@@ -81,15 +92,18 @@ try:
         existing_notes = {e.get("note", "") + e.get("ts", "") for e in data.get("entries", [])}
 
         new_entries = []
-        def on_hist(ts, inp, out, model, source):
+        def on_hist(ts, inp, out, model, source, cache_create=0, cache_read=0):
             key = source + ts
             if key in existing_notes:
                 return
-            c = cost_usd(inp, out, model)
+            c = cost_usd(inp, out, model, cache_create=cache_create, cache_read=cache_read)
+            compute = inp + cache_create + out
             new_entries.append({
                 "ts": ts,
                 "type": "history", "model": model, "note": source,
-                "input_tokens": inp, "output_tokens": out, "cost_usd": c,
+                "input_tokens": inp, "cache_creation_tokens": cache_create,
+                "cache_read_tokens": cache_read, "output_tokens": out,
+                "compute_tokens": compute, "cost_usd": c,
             })
 
         load_history(on_hist)
