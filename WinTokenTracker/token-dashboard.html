@@ -493,6 +493,24 @@ th.sort-asc  .sort-icon, th.sort-desc .sort-icon { color: var(--accent); }
   font-family: var(--mono); color: var(--fg-dim); margin-left: 8px;
   vertical-align: middle;
 }
+#emConvo { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.em-convo-block {
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+}
+.em-convo-label {
+  font-size: 10px; font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: .07em; color: var(--fg-dim); margin: 0 0 6px;
+}
+.em-convo-text {
+  font-size: 13px; font-family: var(--sans); color: var(--fg);
+  margin: 0; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  max-height: 160px; overflow-y: auto;
+}
+.em-loading {
+  text-align: center; font-size: 12px; font-family: var(--mono);
+  color: var(--fg-dim); padding: 12px 0; margin-top: 16px;
+}
 .num { text-align: right; }
 .empty-state {
   text-align: center; padding: 48px 16px;
@@ -752,6 +770,16 @@ canvas { display: block; max-width: 100%; }
     <div class="em-grid" id="emGrid"></div>
     <div class="em-bar-row" id="emBarRow"></div>
     <p class="em-note" id="emNote"></p>
+    <div id="emConvo" hidden>
+      <div class="em-convo-block" id="emUserBlock">
+        <p class="em-convo-label">You asked</p>
+        <p class="em-convo-text" id="emUserText"></p>
+      </div>
+      <div class="em-convo-block" id="emAssistBlock">
+        <p class="em-convo-label">Claude replied</p>
+        <p class="em-convo-text" id="emAssistText"></p>
+      </div>
+    </div>
   </div>
 </div>
 <script>
@@ -1530,6 +1558,39 @@ function openEntryDetail(e) {
     </div>`;
 
   document.getElementById('emNote').textContent = e.note ? `Source: ${e.note}` : '';
+
+  // Reset conversation section
+  const convo = document.getElementById('emConvo');
+  convo.hidden = true;
+
+  // Show loading hint if note is from claude-code
+  let loadingEl = document.getElementById('emLoading');
+  if (!loadingEl) {
+    loadingEl = document.createElement('p');
+    loadingEl.id = 'emLoading';
+    loadingEl.className = 'em-loading';
+    document.getElementById('entryPanel').appendChild(loadingEl);
+  }
+  if (e.note && e.note.startsWith('claude-code:')) {
+    loadingEl.textContent = 'Loading conversation…';
+    loadingEl.hidden = false;
+    const params = new URLSearchParams({ ts: e.ts || '', note: e.note || '' });
+    fetch(`/prompt?${params}`)
+      .then(r => r.json())
+      .then(d => {
+        loadingEl.hidden = true;
+        if (d.user || d.assistant) {
+          if (d.user)    document.getElementById('emUserText').textContent    = d.user;
+          if (d.assistant) document.getElementById('emAssistText').textContent = d.assistant;
+          document.getElementById('emUserBlock').hidden    = !d.user;
+          document.getElementById('emAssistBlock').hidden  = !d.assistant;
+          convo.hidden = false;
+        }
+      })
+      .catch(() => { loadingEl.hidden = true; });
+  } else {
+    loadingEl.hidden = true;
+  }
 
   modal.classList.add('open');
 }

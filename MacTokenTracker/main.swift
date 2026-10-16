@@ -311,6 +311,9 @@ class TokenHTTPServer {
         } else if path == "/status" {
             body = IndexingProgress.shared.json()
             ct   = "application/json"
+        } else if path.hasPrefix("/prompt") {
+            body = Data(promptDetail(path: path).utf8)
+            ct   = "application/json"
         } else {
             body = (try? Data(contentsOf: dashboardPath))
                 ?? Data("<h1>Dashboard not found. Place token-dashboard.html next to this binary.</h1>".utf8)
@@ -469,6 +472,136 @@ class JsonlWatcher {
                                 inp: inp, cc: cc, cr: cr, out: outTok)
         }
     }
+}
+
+// MARK: - Prompt Detail Lookup
+
+func promptDetail(path: String) -> String {
+    // Parse query params from e.g. /prompt?ts=...&note=...
+    func qp(_ key: String) -> String {
+        guard let q = path.components(separatedBy: "?").last else { return "" }
+        for pair in q.components(separatedBy: "&") {
+            let kv = pair.components(separatedBy: "=")
+            if kv.first == key {
+                return kv.dropFirst().joined(separator: "=")
+                    .replacingOccurrences(of: "+", with: " ")
+                    .removingPercentEncoding ?? ""
+            }
+        }
+        return ""
+    }
+
+    let note   = qp("note")   // e.g. "claude-code:abcd1234"
+    let tsStr  = qp("ts")     // ISO timestamp
+
+    // Extract 8-char file-stem prefix from note
+    let prefix = note.hasPrefix("claude-code:") ? String(note.dropFirst("claude-code:".count)) : ""
+    guard !prefix.isEmpty else { return "{\"error\":\"no note\"}" }
+
+    // Find JSONL file whose stem starts with prefix
+    let claudeProjects = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claude/projects")
+    guard let enumerator = FileManager.default.enumerator(
+        at: claudeProjects, includingPropertiesForKeys: nil) else {
+        return "{\"error\":\"no projects dir\"}"
+    }
+
+    var jsonlURL: URL?
+    for case let url as URL in enumerator {
+        if url.pathExtension == "jsonl",
+           url.deletingPathExtension().lastPathComponent.hasPrefix(prefix) {
+            jsonlURL = url; break
+        }
+    }
+    guard let jsonlURL else { return "{\"error\":\"file not found\"}" }
+
+    guard let text = try? String(contentsOf: jsonlURL, encoding: .utf8) else {
+        return "{\"error\":\"unreadable\"}"
+    }
+
+    // Parse target timestamp
+    let isoFmt = ISO8601DateFormatter()
+    isoFmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let isoFmt2 = ISO8601DateFormatter()
+    isoFmt2.formatOptions = [.withInternetDateTime]
+    func parseDate(_ s: String) -> Date? { isoFmt.date(from: s) ?? isoFmt2.date(from: s) }
+    let targetDate = parseDate(tsStr)
+
+    // Walk lines: track last user text; collect all assistant text blocks per requestId
+    var lastUserText = ""
+    var assistantChunks: [String: [String]] = [:]  // requestId -> [text]
+    var assistantTs: [String: Date] = [:]           // requestId -> earliest ts with usage
+    var candidateRid = ""
+    var bestDiff = Double.infinity
+
+    for line in text.components(separatedBy: "\n") {
+        let t = line.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty,
+              let data = t.data(using: .utf8),
+              let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+
+        let type = obj["type"] as? String ?? ""
+
+        if type == "user" {
+            // Extract user text
+            if let msg = obj["message"] as? [String: Any],
+               let content = msg["content"] as? [[String: Any]] {
+                for c in content {
+                    if c["type"] as? String == "text", let txt = c["text"] as? String, !txt.isEmpty {
+                        lastUserText = txt
+                        break
+                    }
+                }
+            }
+        } else if type == "assistant" {
+            let rid = obj["requestId"] as? String ?? ""
+            let msg = obj["message"] as? [String: Any] ?? [:]
+            // Collect text content chunks
+            if let content = msg["content"] as? [[String: Any]] {
+                for c in content {
+                    if c["type"] as? String == "text", let txt = c["text"] as? String, !txt.isEmpty {
+                        assistantChunks[rid, default: []].append(txt)
+                    }
+                }
+            }
+            // Record timestamp when we see usage (final chunk for this request)
+            if (msg["usage"] as? [String: Any]) != nil,
+               let tsField = obj["timestamp"] as? String,
+               let d = parseDate(tsField) {
+                assistantTs[rid] = d
+                // Check proximity to target
+                if let td = targetDate {
+                    let diff = abs(d.timeIntervalSince(td))
+                    if diff < bestDiff { bestDiff = diff; candidateRid = rid }
+                }
+            }
+        }
+    }
+
+    // If no target date, fall back to last assistant entry
+    if candidateRid.isEmpty { candidateRid = assistantTs.keys.sorted().last ?? "" }
+
+    let assistantText = assistantChunks[candidateRid]?.joined() ?? ""
+
+    // Build trimmed snippets
+    let maxLen = 800
+    func snippet(_ s: String) -> String {
+        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count <= maxLen { return trimmed }
+        return String(trimmed.prefix(maxLen)) + "…"
+    }
+
+    func jsonEscape(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+         .replacingOccurrences(of: "\"", with: "\\\"")
+         .replacingOccurrences(of: "\n", with: "\\n")
+         .replacingOccurrences(of: "\r", with: "\\r")
+         .replacingOccurrences(of: "\t", with: "\\t")
+    }
+
+    let u = jsonEscape(snippet(lastUserText))
+    let a = jsonEscape(snippet(assistantText))
+    return "{\"user\":\"\(u)\",\"assistant\":\"\(a)\"}"
 }
 
 // MARK: - Token Formatting
