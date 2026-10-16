@@ -319,7 +319,15 @@ button.primary:hover { opacity: .86; }
   background: var(--hm0); cursor: default;
   transition: opacity .1s, transform .1s;
 }
-.hm-cell:hover { opacity: .75; transform: scale(1.2); }
+.hm-cell:hover { opacity: .75; transform: scale(1.3); cursor: default; }
+#hmTooltip {
+  position: fixed; z-index: 9999; pointer-events: none;
+  background: var(--bg-input); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; padding: 6px 10px; font-size: 12px;
+  font-family: var(--mono); color: var(--fg); white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5);
+  opacity: 0; transition: opacity .12s;
+}
 .hm-cell[data-l="1"] { background: var(--hm1); }
 .hm-cell[data-l="2"] { background: var(--hm2); }
 .hm-cell[data-l="3"] { background: var(--hm3); }
@@ -539,7 +547,86 @@ canvas { display: block; max-width: 100%; }
 }
 </style>
 
+<canvas id="matrixCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+<script>
+(function(){
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx    = canvas.getContext('2d');
+  const CHARS  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*+=[]{}|<>?/\\';
+  const FS     = 13;
+  let W, H, cols, drops = [];
+  let mx = -9999, my = -9999;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cols = Math.floor(W / FS);
+    drops = Array.from({length: cols}, (_, i) => drops[i] ?? (Math.random() * -H / FS));
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  resize();
+
+  ctx.fillStyle = '#0C0C0D';
+  ctx.fillRect(0, 0, W, H);
+
+  function draw() {
+    ctx.fillStyle = 'rgba(12,12,13,0.045)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = FS + 'px "JetBrains Mono",monospace';
+
+    for (let i = 0; i < cols; i++) {
+      const x  = i * FS + FS * 0.5;
+      const y  = drops[i] * FS;
+      const ch = CHARS[Math.random() * CHARS.length | 0];
+      const dx = x - mx, dy = y - my;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const R    = 180;
+
+      if (dist < R) {
+        const t = 1 - dist / R;
+        const r = (200 + t * 55) | 0;
+        const g = (130 + t * 70) | 0;
+        const b = (100 + t * 50) | 0;
+        ctx.fillStyle = `rgba(${r},${g},${b},${0.55 + t * 0.45})`;
+      } else {
+        ctx.fillStyle = `rgba(30,110,100,${0.10 + Math.random() * 0.08})`;
+      }
+
+      ctx.fillText(ch, x, y);
+      if (y > H && Math.random() > 0.978) drops[i] = 0;
+      drops[i] += 0.4;
+    }
+  }
+
+  setInterval(draw, 40);
+})();
+</script>
+
+<div id="hmTooltip"></div>
+<script>
+(function(){
+  const tip = document.getElementById('hmTooltip');
+  document.addEventListener('mouseover', e => {
+    const cell = e.target.closest('.hm-cell');
+    if (!cell || !cell.title) return;
+    tip.textContent = cell.title;
+    tip.style.opacity = '1';
+  });
+  document.addEventListener('mouseout', e => {
+    if (!e.target.closest('.hm-cell')) return;
+    tip.style.opacity = '0';
+  });
+  document.addEventListener('mousemove', e => {
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY - 28) + 'px';
+  });
+})();
+</script>
+
 <!-- ── Update banner (injected by JS) ── -->
+<div style="position:relative;z-index:1">
 <div id="indexingBar">
   <div class="ib-track"><div class="ib-fill" id="ibFill"></div></div>
   <span class="ib-label" id="ibLabel">Indexing…</span>
@@ -1468,3 +1555,4 @@ function renderChart(entries) {
   ctx.fillText(keys[keys.length-1], W-pad.r, H);
 }
 </script>
+</div><!-- /z-index wrapper -->
