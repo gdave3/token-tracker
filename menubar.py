@@ -14,6 +14,7 @@ import json
 import rumps
 from datetime import datetime, date
 from pathlib import Path
+from collections import deque
 
 # ── Config ────────────────────────────────────────────────────────────────────
 LOG_FILE = Path(__file__).parent / "usage_log.json"
@@ -112,7 +113,10 @@ class TokenTrackerApp(rumps.App):
         title = self._make_title(tok, cost)
         super().__init__(title, quit_button=None)
         self.model = DEFAULT_MODEL
+        self._recent: deque = deque(maxlen=5)   # recent live events
+        self._live_enabled = False
         self._build_menu()
+        self._start_live_watcher()
 
     def _make_title(self, tok: int, cost: float) -> str:
         if tok == 0:
@@ -123,15 +127,28 @@ class TokenTrackerApp(rumps.App):
         data = load_log()
         tok, cost = today_stats(data)
         t = data["totals"]
+        live_label = "🟢  Live: on" if self._live_enabled else "⚪  Live: off"
 
         self.menu.clear()
-        self.menu = [
+
+        items = [
             rumps.MenuItem("📋  Log from clipboard", callback=self.log_clipboard),
             None,
             rumps.MenuItem(f"Today:  {fmt_tok(tok)} tokens  ({fmt_cost(cost)})", callback=None),
             rumps.MenuItem(f"Total:  {fmt_tok(t['input_tokens'] + t['output_tokens'])} tokens  ({fmt_cost(t['cost_usd'])})", callback=None),
             rumps.MenuItem(f"Entries: {len(data['entries'])}", callback=None),
+        ]
+
+        # Recent live events
+        if self._recent:
+            items.append(None)
+            items.append(rumps.MenuItem("Recent (live):", callback=None))
+            for label in self._recent:
+                items.append(rumps.MenuItem(f"  {label}", callback=None))
+
+        items += [
             None,
+            rumps.MenuItem(live_label, callback=self.toggle_live),
             self._model_menu(),
             None,
             rumps.MenuItem("📂  Open log file", callback=self.open_log),
@@ -139,6 +156,8 @@ class TokenTrackerApp(rumps.App):
             None,
             rumps.MenuItem("Quit", callback=rumps.quit_application),
         ]
+
+        self.menu = items
 
     def _model_menu(self):
         item = rumps.MenuItem("Model")
@@ -148,6 +167,64 @@ class TokenTrackerApp(rumps.App):
             sub._model_id = mid
             item[label] = sub
         return item
+
+    def _start_live_watcher(self):
+        try:
+            from plugin_live import LiveWatcher
+            self._watcher = LiveWatcher(on_tokens=self._on_live_tokens)
+            self._watcher.start()
+            self._live_enabled = True
+            self._build_menu()
+        except Exception as e:
+            self._live_enabled = False
+
+    def _on_live_tokens(self, inp: int, out: int, model: str, source: str):
+        """Called from watcher thread when new tokens detected."""
+        total = inp + out
+        if total == 0:
+            return
+        c = cost_usd(inp, out, self.model if source != "compaction" else "claude-sonnet-5-5")
+
+        # Save to log
+        data = load_log()
+        entry = {
+            "ts": datetime.utcnow().isoformat() + "Z",
+            "type": "live",
+            "model": model,
+            "note": source,
+            "input_tokens": inp,
+            "output_tokens": out,
+            "cost_usd": c,
+        }
+        data["entries"].append(entry)
+        data["totals"]["input_tokens"]  += inp
+        data["totals"]["output_tokens"] += out
+        data["totals"]["cost_usd"] = round(data["totals"]["cost_usd"] + c, 8)
+        save_log(data)
+
+        # Update recent list
+        src_icon = "⚡" if "claude-code" in source else ("🗜" if source == "compaction" else "🌐")
+        self._recent.appendleft(f"{src_icon} {fmt_tok(total)} tok  {fmt_cost(c)}")
+
+        # Refresh UI from main thread
+        rumps.Timer(self._do_refresh, 0).start()
+
+    def _do_refresh(self, timer):
+        timer.stop()
+        self.refresh()
+
+    @rumps.clicked("⚪  Live: off")
+    @rumps.clicked("🟢  Live: on")
+    def toggle_live(self, sender):
+        if self._live_enabled:
+            try:
+                self._watcher.stop()
+            except Exception:
+                pass
+            self._live_enabled = False
+        else:
+            self._start_live_watcher()
+        self._build_menu()
 
     @rumps.clicked("🔄  Refresh")
     def refresh(self, _=None):
