@@ -73,7 +73,38 @@ def on_tokens(inp, out, model, source):
     save_log(data)
 
 try:
-    from plugin_live import LiveWatcher
+    from plugin_live import LiveWatcher, load_history
+
+    def _bootstrap_history():
+        """Load all historical JSONL data once on startup, skipping duplicates."""
+        data = load_log()
+        existing_notes = {e.get("note", "") + e.get("ts", "") for e in data.get("entries", [])}
+
+        new_entries = []
+        def on_hist(ts, inp, out, model, source):
+            key = source + ts
+            if key in existing_notes:
+                return
+            c = cost_usd(inp, out, model)
+            new_entries.append({
+                "ts": ts,
+                "type": "history", "model": model, "note": source,
+                "input_tokens": inp, "output_tokens": out, "cost_usd": c,
+            })
+
+        load_history(on_hist)
+
+        if new_entries:
+            new_entries.sort(key=lambda e: e["ts"])
+            data["entries"] = new_entries + data["entries"]
+            for e in new_entries:
+                data["totals"]["input_tokens"]  += e["input_tokens"]
+                data["totals"]["output_tokens"] += e["output_tokens"]
+                data["totals"]["cost_usd"] = round(data["totals"]["cost_usd"] + e["cost_usd"], 8)
+            save_log(data)
+
+    _bootstrap_history()
+
     watcher = LiveWatcher(on_tokens=on_tokens)
     watcher.start()
 except Exception:
