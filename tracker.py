@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Precise token usage tracker for Claude — uses the count_tokens API endpoint."""
+"""Claude token usage tracker — precise via API, or local estimation from conversation text."""
 
 import sys
 import json
+import re
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -199,6 +200,83 @@ def cmd_calc(args):
         print(f"  {model:<22}  {fmt_cost(c)}")
 
 
+def estimate_tokens(text: str) -> int:
+    """Local token estimate: chars/4 with adjustments for code and whitespace."""
+    # Code blocks tend to tokenize more densely (~3 chars/token)
+    code_chars = sum(len(m) for m in re.findall(r'```[\s\S]*?```', text))
+    rest_chars = len(text) - code_chars
+    return int(code_chars / 3 + rest_chars / 4)
+
+
+def cmd_estimate(args):
+    """Estimate tokens locally from conversation text — no API key needed."""
+    if args.file:
+        raw = Path(args.file).read_text()
+    elif args.text:
+        raw = args.text
+    else:
+        print("Paste your conversation text, then press Enter + Ctrl-D (Mac: Ctrl-D on a new line):")
+        try:
+            raw = sys.stdin.read()
+        except KeyboardInterrupt:
+            print("\nCancelled.")
+            return
+
+    # Try to split Human / Assistant turns
+    # Handles "Human:", "You:", "User:", "Assistant:", "Claude:"
+    turn_re = re.compile(r'\n?(?:Human|You|User|Assistant|Claude)\s*:\s*', re.IGNORECASE)
+    parts = turn_re.split(raw)
+    headers = turn_re.findall(raw)
+
+    if len(parts) > 2:
+        input_tok = output_tok = 0
+        for i, part in enumerate(parts[1:], 0):
+            h = headers[i].strip().rstrip(':').lower() if i < len(headers) else ''
+            tok = estimate_tokens(part)
+            if h in ('human', 'you', 'user'):
+                input_tok += tok
+            else:
+                output_tok += tok
+        total = input_tok + output_tok
+        print(f"\n  ── Local estimate (±10-15%) ──────────────────")
+        print(f"  Input  (your messages) : ~{fmt_tokens(input_tok)}")
+        print(f"  Output (Claude replies): ~{fmt_tokens(output_tok)}")
+        print(f"  Total                  : ~{fmt_tokens(total)}")
+    else:
+        total = estimate_tokens(raw)
+        input_tok = total
+        output_tok = 0
+        print(f"\n  ── Local estimate (±10-15%) ──────────────────")
+        print(f"  Total tokens: ~{fmt_tokens(total)}")
+
+    # Cost across selected models
+    print(f"\n  Estimated cost if on API:")
+    models = args.models if args.models else [args.model]
+    for m in models:
+        p = MODELS.get(m, MODELS[DEFAULT_MODEL])
+        c = cost_usd(input_tok, output_tok, m)
+        print(f"    {m:<22}  {fmt_cost(c)}")
+
+    if args.log and total > 0:
+        data = load_log()
+        c = cost_usd(input_tok, output_tok, args.model)
+        entry = {
+            "ts": datetime.utcnow().isoformat() + "Z",
+            "type": "estimate",
+            "model": args.model,
+            "note": args.note or "local estimate",
+            "input_tokens": input_tok,
+            "output_tokens": output_tok,
+            "cost_usd": c,
+        }
+        data["entries"].append(entry)
+        data["totals"]["input_tokens"] += input_tok
+        data["totals"]["output_tokens"] += output_tok
+        data["totals"]["cost_usd"] = round(data["totals"]["cost_usd"] + c, 8)
+        save_log(data)
+        print(f"\n  logged ✓  ({fmt_cost(c)} at {args.model})")
+
+
 def cmd_clear(args):
     """Delete the log file (irreversible)."""
     if not LOG_FILE.exists():
@@ -221,12 +299,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 commands:
-  count   Count input tokens for text/file (calls count_tokens API)
-  log     Record an exchange with known token counts
-  stats   Show usage summary
-  prices  Show current model pricing
-  calc    Calculate cost without logging
-  clear   Delete the log file
+  estimate  Estimate tokens locally from text/file/stdin — no API key needed
+  count     Count tokens precisely via API (needs ANTHROPIC_API_KEY)
+  log       Record an exchange with known token counts
+  stats     Show usage summary
+  prices    Show current model pricing
+  calc      Calculate cost without logging
+  clear     Delete the log file
 """,
     )
     sub = parser.add_subparsers(dest="cmd")
@@ -259,18 +338,30 @@ commands:
     p_calc.add_argument("-m", "--models", nargs="+", choices=list(MODELS),
                         help="Models to compare (default: all)")
 
+    # estimate
+    p_est = sub.add_parser("estimate", help="Estimate tokens locally — no API key needed")
+    p_est.add_argument("text", nargs="?", help="Text to estimate (omit to read from stdin)")
+    p_est.add_argument("-f", "--file", help="Estimate tokens in a file")
+    p_est.add_argument("-m", "--model", default=DEFAULT_MODEL, choices=list(MODELS),
+                       help="Model for cost calculation")
+    p_est.add_argument("--models", nargs="+", choices=list(MODELS),
+                       help="Compare cost across multiple models")
+    p_est.add_argument("--log", action="store_true", help="Save estimate to log")
+    p_est.add_argument("-n", "--note", help="Optional note")
+
     # clear
     sub.add_parser("clear", help="Delete the usage log")
 
     args = parser.parse_args()
 
     dispatch = {
-        "count":  cmd_count,
-        "log":    cmd_log,
-        "stats":  cmd_stats,
-        "prices": cmd_prices,
-        "calc":   cmd_calc,
-        "clear":  cmd_clear,
+        "count":    cmd_count,
+        "log":      cmd_log,
+        "estimate": cmd_estimate,
+        "stats":    cmd_stats,
+        "prices":   cmd_prices,
+        "calc":     cmd_calc,
+        "clear":    cmd_clear,
     }
 
     if args.cmd not in dispatch:
