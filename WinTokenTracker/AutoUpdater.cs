@@ -8,7 +8,7 @@ public class AutoUpdater
 {
     public static readonly AutoUpdater Instance = new();
 
-    private const string AppVersion = "1.0.15";
+    private const string AppVersion = "1.0.16";
     private const string GitHubRepo = "gdave3/token-tracker";
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
