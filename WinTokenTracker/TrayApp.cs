@@ -46,13 +46,17 @@ public class TrayApp : ApplicationContext
         };
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Open Dashboard", null, (_, _) => OpenDashboard());
+        menu.Items.Add("Open Dashboard",      null, (_, _) => OpenDashboard());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Open Log File", null, (_, _) => OpenLog(logPath));
+        menu.Items.Add("Check for Updates…",  null, (_, _) => AutoUpdater.Instance.CheckNow());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Quit", null, (_, _) => ExitApp());
+        menu.Items.Add("Open Log File",       null, (_, _) => OpenLog(logPath));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Quit",                null, (_, _) => ExitApp());
         _tray.ContextMenuStrip = menu;
         _tray.DoubleClick     += (_, _) => OpenDashboard();
+
+        AutoUpdater.Instance.CheckOnStartup();
 
         // Refresh tray tooltip every 10 seconds
         _titleTimer = new System.Windows.Forms.Timer { Interval = 10_000 };
