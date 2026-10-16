@@ -8,7 +8,7 @@ public class JsonlWatcher : IDisposable
     private readonly string                  _projectsPath;
     private readonly Dictionary<string, long> _filePositions = new();
     private readonly HashSet<string>          _seenRequests  = new();
-    private readonly Lock                     _lock          = new();
+    private readonly object                   _lock          = new();
     private          FileSystemWatcher?       _fsw;
 
     public JsonlWatcher(LogManager log, string projectsPath)

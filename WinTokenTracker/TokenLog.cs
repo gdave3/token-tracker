@@ -34,7 +34,7 @@ public class TokenLog
 public class LogManager
 {
     private readonly string   _logPath;
-    private readonly Lock     _lock = new();
+    private readonly object   _lock = new();
     private          TokenLog _log  = new();
 
     private static readonly Dictionary<string, (double inp, double out, double cc, double cr)> Rates = new()
